@@ -31,7 +31,6 @@ public class ServerChunkCacheBlockSystem extends ChunkProviderServer {
 
     private final Set<Long> droppedChunksSet = Sets.newHashSet();
     public final BlockSystemServer world;
-    private Set<Long> loadingChunks = Sets.newHashSet();
 
     public ServerChunkCacheBlockSystem(BlockSystemServer world, IChunkLoader chunkLoader) {
         super((WorldServer) world.getMainWorld(), chunkLoader, new BlankChunkGenerator(world));
@@ -44,10 +43,10 @@ public class ServerChunkCacheBlockSystem extends ChunkProviderServer {
     }
 
     @Override
-    public void unload(Chunk chunkIn) {
-        if (this.world.provider.canDropChunk(chunkIn.xPosition, chunkIn.zPosition)) {
-            this.droppedChunksSet.add(ChunkPos.asLong(chunkIn.xPosition, chunkIn.zPosition));
-            chunkIn.unloaded = true;
+    public void unload(Chunk chunk) {
+        if (this.world.provider.canDropChunk(chunk.xPosition, chunk.zPosition)) {
+            this.droppedChunksSet.add(ChunkPos.asLong(chunk.xPosition, chunk.zPosition));
+            chunk.unloaded = true;
         }
     }
 
@@ -81,7 +80,6 @@ public class ServerChunkCacheBlockSystem extends ChunkProviderServer {
             chunk = new BlockSystemChunk(this.world, x, z);
             this.id2ChunkMap.put(pos, chunk);
             chunk.onChunkLoad();
-            chunk = ForgeChunkManager.fetchDormantChunk(pos, this.world);
         }
         if (runnable != null) {
             runnable.run();
@@ -160,7 +158,6 @@ public class ServerChunkCacheBlockSystem extends ChunkProviderServer {
                         this.saveChunkExtraData(chunk);
                         this.id2ChunkMap.remove(id);
                         ++i;
-                        ForgeChunkManager.putDormantChunk(ChunkPos.asLong(chunk.xPosition, chunk.zPosition), chunk);
                         if (this.id2ChunkMap.size() == 0 && ForgeChunkManager.getPersistentChunksFor(this.world).size() == 0 && !this.world.provider.getDimensionType().shouldLoadSpawn()) {
                             DimensionManager.unloadWorld(this.world.provider.getDimension());
                             break;

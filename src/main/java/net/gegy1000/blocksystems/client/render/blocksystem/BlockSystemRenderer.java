@@ -4,18 +4,33 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Queues;
 import com.google.common.collect.Sets;
 import net.gegy1000.blocksystems.BlockSystems;
+import net.gegy1000.blocksystems.client.render.blocksystem.chunk.BlockSystemChunkRenderDispatcher;
 import net.gegy1000.blocksystems.client.render.blocksystem.chunk.BlockSystemRenderChunk;
+import net.gegy1000.blocksystems.client.render.blocksystem.chunk.BlockSystemRenderChunkContainer;
+import net.gegy1000.blocksystems.client.render.blocksystem.chunk.ListedBlockSystemRenderChunk;
 import net.gegy1000.blocksystems.client.render.blocksystem.chunk.VBORenderChunkContainer;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
+import net.gegy1000.blocksystems.server.blocksystem.BlockSystemPlayerHandler;
+import net.gegy1000.blocksystems.server.blocksystem.ServerBlockSystemHandler;
+import net.minecraft.block.Block;
+import net.minecraft.block.BlockChest;
+import net.minecraft.block.BlockEnderChest;
+import net.minecraft.block.BlockSign;
+import net.minecraft.block.BlockSkull;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.BlockRendererDispatcher;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.RenderHelper;
+import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.chunk.VisGraph;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.client.renderer.texture.TextureMap;
+import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.client.renderer.vertex.VertexFormatElement;
 import net.minecraft.entity.Entity;
@@ -34,23 +49,23 @@ import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
-import net.gegy1000.blocksystems.client.render.blocksystem.chunk.BlockSystemChunkRenderDispatcher;
-import net.gegy1000.blocksystems.client.render.blocksystem.chunk.BlockSystemRenderChunkContainer;
-import net.gegy1000.blocksystems.client.render.blocksystem.chunk.ListedBlockSystemRenderChunk;
-import net.gegy1000.blocksystems.server.blocksystem.BlockSystemPlayerHandler;
-import net.gegy1000.blocksystems.server.blocksystem.ServerBlockSystemHandler;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.util.vector.Vector3f;
 
 import javax.vecmath.Point3d;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 
 @SideOnly(Side.CLIENT)
 public class BlockSystemRenderer implements IWorldEventListener {
     private static final Minecraft MC = Minecraft.getMinecraft();
+    private static final TextureManager TEXTURE_MANAGER = MC.getTextureManager();
+    private static final BlockRendererDispatcher BLOCK_RENDERER_DISPATCHER = MC.getBlockRendererDispatcher();
+    private static final TextureAtlasSprite[] DESTROY_STAGES = new TextureAtlasSprite[10];
 
     private BlockSystem blockSystem;
 
@@ -75,8 +90,8 @@ public class BlockSystemRenderer implements IWorldEventListener {
 
     private boolean displayListEntitiesDirty = true;
 
-    private BlockSystemChunkRenderDispatcher renderDispatcher;
     private BlockSystemRenderChunkContainer chunkContainer;
+    private BlockSystemChunkRenderDispatcher renderDispatcher;
 
     private int viewDistance;
     private boolean vbosEnabled;
@@ -87,11 +102,18 @@ public class BlockSystemRenderer implements IWorldEventListener {
 
     private int frameCount;
 
-    public BlockSystemRenderer(BlockSystem blockSystem) {
+    static {
+        TextureMap textureMap = MC.getTextureMapBlocks();
+        for (int i = 0; i < DESTROY_STAGES.length; i++) {
+            DESTROY_STAGES[i] = textureMap.getAtlasSprite("minecraft:blocks/destroy_stage_" + i);
+        }
+    }
+
+    public BlockSystemRenderer(BlockSystem blockSystem, BlockSystemChunkRenderDispatcher renderDispatcher) {
         this.blockSystem = blockSystem;
+        this.renderDispatcher = renderDispatcher;
         this.viewDistance = -1;
         this.chunkContainer = new VBORenderChunkContainer();
-        this.renderDispatcher = new BlockSystemChunkRenderDispatcher();
         this.updateFrustrum(this.getUntransformedPosition(MC.thePlayer), MC.gameSettings.renderDistanceChunks, OpenGlHelper.useVbo());
         blockSystem.addEventListener(this);
     }
@@ -110,6 +132,8 @@ public class BlockSystemRenderer implements IWorldEventListener {
         GlStateManager.rotate(rotationZ, 0.0F, 0.0F, 1.0F);
         GlStateManager.translate(-0.5, 0.0, -0.5);
 
+        MC.entityRenderer.enableLightmap();
+
         GlStateManager.matrixMode(GL11.GL_MODELVIEW);
         GlStateManager.shadeModel(GL11.GL_SMOOTH);
         GlStateManager.pushMatrix();
@@ -122,28 +146,67 @@ public class BlockSystemRenderer implements IWorldEventListener {
         MC.getTextureManager().getTexture(TextureMap.LOCATION_BLOCKS_TEXTURE).restoreLastBlurMipmap();
         GlStateManager.popMatrix();
 
-        /*GlStateManager.disableLighting();
-        for (BlockRenderLayer layer : BlockRenderLayer.values()) {
-            for (BlockSystemRenderChunk chunk : this.viewFrustum.chunks) {
-                if (!chunk.isEmpty()) {
-                    BlockPos chunkPosition = chunk.getPosition();
-                    int chunkX = chunkPosition.getX() << 4;
-                    int chunkY = chunkPosition.getY() << 4;
-                    int chunkZ = chunkPosition.getZ() << 4;
-                    GlStateManager.pushMatrix();
-                    GlStateManager.translate(chunkX - 0.5, chunkY, chunkZ - 0.5);
-                    chunk.renderLayer(layer);
-                    GlStateManager.popMatrix();
-                }
+        MC.entityRenderer.disableLightmap();
+
+        this.renderEntities(partialTicks);
+        this.renderBlockSelection(viewEntity);
+
+        Map<BlockPos, Integer> breaking = new HashMap<>();
+        for (Map.Entry<EntityPlayer, BlockSystemPlayerHandler> entry : this.blockSystem.getPlayerHandlers().entrySet()) {
+            BlockSystemPlayerHandler handler = entry.getValue();
+            BlockPos pos = handler.getBreaking();
+            if (pos != null) {
+                breaking.put(pos, (int) (handler.getBreakProgress() * 10.0F));
             }
         }
-        GlStateManager.pushMatrix();
-        GlStateManager.translate(-0.5, 0.0, -0.5);
-        for (BlockSystemRenderChunk chunk : this.viewFrustum.chunks) {
-            chunk.render(partialTicks);
+
+        if (breaking.size() > 0) {
+            Tessellator tessellator = Tessellator.getInstance();
+            net.minecraft.client.renderer.VertexBuffer builder = tessellator.getBuffer();
+            GlStateManager.enableBlend();
+            GlStateManager.depthMask(false);
+            TEXTURE_MANAGER.getTexture(TextureMap.LOCATION_BLOCKS_TEXTURE).setBlurMipmap(false, false);
+            GlStateManager.tryBlendFuncSeparate(GlStateManager.SourceFactor.DST_COLOR, GlStateManager.DestFactor.SRC_COLOR, GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
+            GlStateManager.color(1.0F, 1.0F, 1.0F, 0.5F);
+            GlStateManager.doPolygonOffset(-3.0F, -3.0F);
+            GlStateManager.enablePolygonOffset();
+            GlStateManager.alphaFunc(GL11.GL_GREATER, 0.1F);
+            GlStateManager.enableAlpha();
+            GlStateManager.pushMatrix();
+            RenderHelper.disableStandardItemLighting();
+            builder.begin(GL11.GL_QUADS, DefaultVertexFormats.BLOCK);
+            builder.noColor();
+
+            for (Map.Entry<BlockPos, Integer> entry : breaking.entrySet()) {
+                BlockPos pos = entry.getKey();
+                IBlockState state = this.blockSystem.getBlockState(pos);
+                Block block = state.getBlock();
+                TileEntity tile = this.blockSystem.getTileEntity(pos);
+                boolean hasBreak = block instanceof BlockChest || block instanceof BlockEnderChest || block instanceof BlockSign || block instanceof BlockSkull;
+                if (!hasBreak) {
+                    hasBreak = tile != null && tile.canRenderBreaking();
+                }
+                if (!hasBreak) {
+                    BLOCK_RENDERER_DISPATCHER.renderBlockDamage(state, pos, DESTROY_STAGES[entry.getValue()], this.blockSystem);
+                }
+            }
+
+            tessellator.draw();
+            GlStateManager.doPolygonOffset(0.0F, 0.0F);
+            GlStateManager.disablePolygonOffset();
+            GlStateManager.depthMask(true);
+            RenderHelper.enableStandardItemLighting();
+            GlStateManager.popMatrix();
+            GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            TEXTURE_MANAGER.getTexture(TextureMap.LOCATION_BLOCKS_TEXTURE).restoreLastBlurMipmap();
+            GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+            GlStateManager.disableAlpha();
         }
-        GlStateManager.popMatrix();*/
-        GlStateManager.enableLighting();
+
+        GlStateManager.popMatrix();
+    }
+
+    private void renderBlockSelection(Entity viewEntity) {
         RenderHelper.enableStandardItemLighting();
         ServerBlockSystemHandler structureHandler = BlockSystems.PROXY.getBlockSystemHandler(this.blockSystem.getMainWorld());
         if (viewEntity instanceof EntityPlayer && structureHandler.getMousedOver((EntityPlayer) viewEntity) == this.blockSystem) {
@@ -165,7 +228,34 @@ public class BlockSystemRenderer implements IWorldEventListener {
                 GlStateManager.disableBlend();
             }
         }
-        GlStateManager.popMatrix();
+    }
+
+    private void renderEntities(float partialTicks) {
+        RenderHelper.enableStandardItemLighting();
+
+        TileEntityRendererDispatcher.instance.preDrawBatch();
+
+        for (ChunkRenderInformation information : this.chunkRenderInformation) {
+            List<TileEntity> blockEntities = information.chunk.getCompiledChunk().getTileEntities();
+            if (!blockEntities.isEmpty()) {
+                for (TileEntity blockEntity : blockEntities) {
+//                    if (camera.isBoundingBoxInFrustum(blockEntity.getRenderBoundingBox())) {
+                    BlockPos pos = blockEntity.getPos();
+                    TileEntityRendererDispatcher.instance.renderTileEntityAt(blockEntity, pos.getX(), pos.getY(), pos.getZ(), partialTicks, -1);
+//                    }
+                }
+            }
+        }
+        synchronized (this.blockEntities) {
+            for (TileEntity blockEntity : this.blockEntities) {
+//                if (!camera.isBoundingBoxInFrustum(blockEntity.getRenderBoundingBox())) {
+                BlockPos pos = blockEntity.getPos();
+                TileEntityRendererDispatcher.instance.renderTileEntityAt(blockEntity, pos.getX(), pos.getY(), pos.getZ(), partialTicks, -1);
+//                }
+            }
+        }
+
+        TileEntityRendererDispatcher.instance.drawBatch(0);
     }
 
     private void setup(Entity viewEntity, float partialTicks, Point3d untransformed) {
@@ -182,13 +272,17 @@ public class BlockSystemRenderer implements IWorldEventListener {
         double deltaZ = untransformed.z - this.frustumUpdatePosZ;
         double delta = deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ;
 
-        if (this.frustumUpdatePosChunkX != viewEntity.chunkCoordX || this.frustumUpdatePosChunkY != viewEntity.chunkCoordY || this.frustumUpdatePosChunkZ != viewEntity.chunkCoordZ || delta > 16.0D) {
+        int chunkX = (int) (untransformed.x) >> 4;
+        int chunkY = (int) (untransformed.y) >> 4;
+        int chunkZ = (int) (untransformed.z) >> 4;
+
+        if (this.frustumUpdatePosChunkX != chunkX || this.frustumUpdatePosChunkY != chunkY || this.frustumUpdatePosChunkZ != chunkZ || delta > 16.0D) {
             this.frustumUpdatePosX = untransformed.x;
             this.frustumUpdatePosY = untransformed.y;
             this.frustumUpdatePosZ = untransformed.z;
-            this.frustumUpdatePosChunkX = (int) (untransformed.x) >> 4;
-            this.frustumUpdatePosChunkY = (int) (untransformed.y) >> 4;
-            this.frustumUpdatePosChunkZ = (int) (untransformed.z) >> 4;
+            this.frustumUpdatePosChunkX = chunkX;
+            this.frustumUpdatePosChunkY = chunkY;
+            this.frustumUpdatePosChunkZ = chunkZ;
             this.viewFrustum.updateChunkPositions(untransformed.x, untransformed.z);
         }
 
@@ -215,32 +309,18 @@ public class BlockSystemRenderer implements IWorldEventListener {
             Entity.setRenderDistanceWeight(MathHelper.clamp_double(this.viewDistance / 8.0D, 1.0D, 2.5D));
             boolean renderChunksMany = MC.renderChunksMany;
             if (eyeChunk != null) {
-                boolean hidden = false;
                 ChunkRenderInformation chunkInformation = new ChunkRenderInformation(eyeChunk, null, 0);
-                Set<EnumFacing> visibleFacings = this.getVisibleFacings(eyePosition);
-                if (visibleFacings.size() == 1) {
-                    Vector3f viewVector = this.getViewVector(viewEntity, partialTicks);
-                    EnumFacing facing = EnumFacing.getFacingFromVector(viewVector.x, viewVector.y, viewVector.z).getOpposite();
-                    visibleFacings.remove(facing);
+                if (this.blockSystem.getBlockState(eyePosition).isOpaqueCube()) {
+                    renderChunksMany = false;
                 }
-                if (visibleFacings.isEmpty()) {
-                    hidden = true;
-                }
-                if (hidden && !playerSpectator) {
-                    this.chunkRenderInformation.add(chunkInformation);
-                } else {
-                    if (playerSpectator && this.blockSystem.getBlockState(eyePosition).isOpaqueCube()) {
-                        renderChunksMany = false;
-                    }
-                    eyeChunk.setFrameIndex(frameCount);
-                    queue.add(chunkInformation);
-                }
+                eyeChunk.setFrameIndex(frameCount);
+                queue.add(chunkInformation);
             } else {
-                int chunkY = eyePosition.getY() > 0 ? 248 : 8;
-                for (int chunkX = -this.viewDistance; chunkX <= this.viewDistance; ++chunkX) {
-                    for (int chunkZ = -this.viewDistance; chunkZ <= this.viewDistance; ++chunkZ) {
-                        BlockSystemRenderChunk chunk = this.viewFrustum.getChunk(new BlockPos((chunkX << 4) + 8, chunkY, (chunkZ << 4) + 8));
-                        if (chunk != null/* && ((ICamera) camera).isBoundingBoxInFrustum(chunk.boundingBox)*/) { //TODO Camera Culling
+                int y = eyePosition.getY() > 0 ? 248 : 8;
+                for (int x = -this.viewDistance; x <= this.viewDistance; ++x) {
+                    for (int z = -this.viewDistance; z <= this.viewDistance; ++z) {
+                        BlockSystemRenderChunk chunk = this.viewFrustum.getChunk(new BlockPos((x << 4) + 8, y, (z << 4) + 8));
+                        if (chunk != null && !chunk.compiledChunk.isEmpty()/* && ((ICamera) camera).isBoundingBoxInFrustum(chunk.boundingBox)*/) { //TODO Camera Culling
                             chunk.setFrameIndex(frameCount);
                             queue.add(new ChunkRenderInformation(chunk, null, 0));
                         }
@@ -329,7 +409,6 @@ public class BlockSystemRenderer implements IWorldEventListener {
     }
 
     private void renderBlockLayer(BlockRenderLayer layer) {
-        MC.entityRenderer.enableLightmap();
         if (OpenGlHelper.useVbo()) {
             GlStateManager.glEnableClientState(32884);
             OpenGlHelper.setClientActiveTexture(OpenGlHelper.defaultTexUnit);
@@ -359,7 +438,6 @@ public class BlockSystemRenderer implements IWorldEventListener {
                 }
             }
         }
-        MC.entityRenderer.disableLightmap();
     }
 
     public void queueRenderUpdate(int minX, int minY, int minZ, int maxX, int maxY, int maxZ, boolean requiresUpdate) {
@@ -405,6 +483,7 @@ public class BlockSystemRenderer implements IWorldEventListener {
 
     public void delete() {
         this.viewFrustum.delete();
+        this.renderDispatcher.stopChunkUpdates();
         this.renderDispatcher.stopWorkerThreads();
     }
 

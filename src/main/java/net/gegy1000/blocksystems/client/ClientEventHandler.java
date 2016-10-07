@@ -5,6 +5,7 @@ import net.gegy1000.blocksystems.client.render.blocksystem.BlockSystemRenderHand
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
+import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.math.RayTraceResult;
@@ -79,11 +80,13 @@ public class ClientEventHandler {
 
     @SubscribeEvent
     public void onRenderWorldLast(RenderWorldLastEvent event) {
+        GlStateManager.enableFog();
         EntityPlayer player = MINECRAFT.thePlayer;
         float partialTicks = event.getPartialTicks();
-        double playerX = player.prevPosX + (player.posX - player.prevPosX) * partialTicks;
-        double playerY = player.prevPosY + (player.posY - player.prevPosY) * partialTicks;
-        double playerZ = player.prevPosZ + (player.posZ - player.prevPosZ) * partialTicks;
+        double playerX = player.lastTickPosX + (player.posX - player.lastTickPosX) * partialTicks;
+        double playerY = player.lastTickPosY + (player.posY - player.lastTickPosY) * partialTicks;
+        double playerZ = player.lastTickPosZ + (player.posZ - player.lastTickPosZ) * partialTicks;
         BlockSystemRenderHandler.render(player, playerX, playerY, playerZ, partialTicks);
+        GlStateManager.disableFog();
     }
 }

@@ -119,7 +119,7 @@ public class BlockSystemRenderChunk {
         VisGraph visibilityGraph = new VisGraph();
         HashSet<TileEntity> blockEntities = Sets.newHashSet();
         if (!this.region.extendedLevelsInChunkCache()) {
-            boolean[] layerVisiblities = new boolean[BlockRenderLayer.values().length];
+            boolean[] layerVisibilities = new boolean[BlockRenderLayer.values().length];
             BlockRendererDispatcher renderDispatcher = Minecraft.getMinecraft().getBlockRendererDispatcher();
             for (BlockPos.MutableBlockPos pos : BlockPos.getAllInBoxMutable(lowerCorner, upperCorner)) {
                 IBlockState state = this.region.getBlockState(pos);
@@ -151,13 +151,13 @@ public class BlockSystemRenderChunk {
                             compiledChunk.setLayerStarted(layer);
                             this.preRenderBlocks(builder, lowerCorner);
                         }
-                        layerVisiblities[layerIndex] |= renderDispatcher.renderBlock(state, pos, this.region, builder);
+                        layerVisibilities[layerIndex] |= renderDispatcher.renderBlock(state, pos, this.region, builder);
                     }
                 }
                 ForgeHooksClient.setRenderLayer(null);
             }
             for (BlockRenderLayer layer : BlockRenderLayer.values()) {
-                if (layerVisiblities[layer.ordinal()]) {
+                if (layerVisibilities[layer.ordinal()]) {
                     compiledChunk.setLayerUsed(layer);
                 }
                 if (compiledChunk.isLayerStarted(layer)) {

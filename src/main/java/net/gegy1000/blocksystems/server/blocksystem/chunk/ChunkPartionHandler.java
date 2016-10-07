@@ -12,8 +12,8 @@ public class ChunkPartionHandler {
         int attempts = 0;
         while (attempts < 100) {
             BlockPos position = ChunkPartionHandler.generatePartionPosition();
-            if (!data.hasPartian(position)) {
-                data.addPartian(position);
+            if (!data.hasPartion(position)) {
+                data.addPartion(position);
                 return position;
             }
             attempts++;

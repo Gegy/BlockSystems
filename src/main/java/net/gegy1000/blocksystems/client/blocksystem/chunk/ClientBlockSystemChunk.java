@@ -4,10 +4,7 @@ import net.gegy1000.blocksystems.client.render.blocksystem.BlockSystemRenderHand
 import net.gegy1000.blocksystems.client.render.blocksystem.BlockSystemRenderer;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
 import net.gegy1000.blocksystems.server.blocksystem.chunk.BlockSystemChunk;
-import net.minecraft.block.state.IBlockState;
-import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.chunk.Chunk;
 
@@ -17,36 +14,17 @@ public class ClientBlockSystemChunk extends BlockSystemChunk {
     }
 
     @Override
-    public IBlockState setBlockState(BlockPos pos, IBlockState state) {
-        IBlockState previous = super.setBlockState(pos, state);
-        if (previous != null) {
-            if (!this.loading) {
-                this.rebuild();
-                this.rebuildNeighbours();
-            }
-        }
-        return previous;
-    }
-
-    private void rebuildNeighbours() {
-        for (EnumFacing facing : EnumFacing.HORIZONTALS) {
-            Chunk chunk = this.blockSystem.getChunkFromChunkCoords(this.xPosition + facing.getFrontOffsetX(), this.zPosition + facing.getFrontOffsetZ());
-            if (chunk instanceof ClientBlockSystemChunk && !chunk.isEmpty()) {
-                ((ClientBlockSystemChunk) chunk).rebuild();
-            }
-        }
-    }
-
-    @Override
-    public void deserialize(NBTTagCompound compound) {
-        super.deserialize(compound);
-        this.rebuild();
-        this.rebuildNeighbours();
-    }
-
-    @Override
     public void remove() {
         super.remove();
+        BlockSystemRenderer renderer = BlockSystemRenderHandler.get(this.blockSystem);
+        if (renderer != null) {
+            renderer.deleteChunk(this.xPosition, this.zPosition);
+        }
+    }
+
+    @Override
+    public void onChunkUnload() {
+        super.onChunkUnload();
         BlockSystemRenderer renderer = BlockSystemRenderHandler.get(this.blockSystem);
         if (renderer != null) {
             renderer.deleteChunk(this.xPosition, this.zPosition);
@@ -69,12 +47,5 @@ public class ClientBlockSystemChunk extends BlockSystemChunk {
             }
         }
         return tile;
-    }
-
-    public void rebuild() {
-        BlockSystemRenderer renderer = BlockSystemRenderHandler.get(this.blockSystem);
-        if (renderer != null) {
-            renderer.queueChunkRenderUpdate(this.xPosition, this.zPosition);
-        }
     }
 }

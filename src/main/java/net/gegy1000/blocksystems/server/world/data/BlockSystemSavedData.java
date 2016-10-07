@@ -24,7 +24,7 @@ public class BlockSystemSavedData extends WorldSavedData {
     private World world;
 
     private Map<Integer, BlockSystem> blockSystems = new HashMap<>();
-    private Set<BlockPos> partians = new HashSet<>();
+    private Set<BlockPos> partions = new HashSet<>();
 
     public BlockSystemSavedData() {
         this(KEY);
@@ -49,11 +49,11 @@ public class BlockSystemSavedData extends WorldSavedData {
     @Override
     public void readFromNBT(NBTTagCompound compound) {
         this.world = READING_WORLD.get();
-        this.partians.clear();
+        this.partions.clear();
         this.blockSystems.clear();
-        NBTTagList partiansList = compound.getTagList("Partians", Constants.NBT.TAG_LONG);
-        for (int i = 0; i < partiansList.tagCount(); i++) {
-            this.partians.add(BlockPos.fromLong(((NBTTagLong) partiansList.get(i)).getLong()));
+        NBTTagList partionsList = compound.getTagList("Partions", Constants.NBT.TAG_LONG);
+        for (int i = 0; i < partionsList.tagCount(); i++) {
+            this.partions.add(BlockPos.fromLong(((NBTTagLong) partionsList.get(i)).getLong()));
         }
         NBTTagList blockSystemsList = compound.getTagList("BlockSystems", Constants.NBT.TAG_COMPOUND);
         for (int i = 0; i < blockSystemsList.tagCount(); i++) {
@@ -67,11 +67,11 @@ public class BlockSystemSavedData extends WorldSavedData {
 
     @Override
     public NBTTagCompound writeToNBT(NBTTagCompound compound) {
-        NBTTagList partiansList = new NBTTagList();
-        for (BlockPos pos : this.partians) {
-            partiansList.appendTag(new NBTTagLong(pos.toLong()));
+        NBTTagList partionsList = new NBTTagList();
+        for (BlockPos pos : this.partions) {
+            partionsList.appendTag(new NBTTagLong(pos.toLong()));
         }
-        compound.setTag("Partians", partiansList);
+        compound.setTag("Partions", partionsList);
         NBTTagList blockSystemsList = new NBTTagList();
         for (Map.Entry<Integer, BlockSystem> entry : this.blockSystems.entrySet()) {
             NBTTagCompound tag = entry.getValue().serialize(new NBTTagCompound());
@@ -81,21 +81,21 @@ public class BlockSystemSavedData extends WorldSavedData {
         return compound;
     }
 
-    public void addPartian(BlockPos pos) {
-        if (!this.partians.contains(pos)) {
-            this.partians.add(pos);
+    public void addPartion(BlockPos pos) {
+        if (!this.partions.contains(pos)) {
+            this.partions.add(pos);
             this.markDirty();
         }
     }
 
-    public void deletePartian(BlockPos pos) {
-        if (this.partians.remove(pos)) {
+    public void deletePartion(BlockPos pos) {
+        if (this.partions.remove(pos)) {
             this.markDirty();
         }
     }
 
-    public boolean hasPartian(BlockPos pos) {
-        return this.partians.contains(pos);
+    public boolean hasPartion(BlockPos pos) {
+        return this.partions.contains(pos);
     }
 
     public void addBlockSystem(BlockSystem blockSystem) {

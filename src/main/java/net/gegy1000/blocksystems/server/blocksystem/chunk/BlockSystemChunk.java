@@ -1,5 +1,7 @@
 package net.gegy1000.blocksystems.server.blocksystem.chunk;
 
+import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
+import net.gegy1000.blocksystems.server.world.data.BlockSystemSavedData;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.init.Blocks;
@@ -10,8 +12,6 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraftforge.common.util.Constants;
-import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
-import net.gegy1000.blocksystems.server.world.data.BlockSystemSavedData;
 
 public class BlockSystemChunk extends Chunk {
     protected BlockSystem blockSystem;
@@ -68,14 +68,14 @@ public class BlockSystemChunk extends Chunk {
         if (!this.mainWorld.isRemote) {
             for (int y = 0; y < 16; y++) {
                 BlockSystemSavedData data = BlockSystemSavedData.get(this.mainWorld);
-                data.deletePartian(this.partionPositions[y]);
+                data.deletePartion(this.partionPositions[y]);
                 this.clearSpace(y);
             }
         }
     }
 
-    private void clearSpace(int partianY) {
-        BlockPos partionPosition = this.partionPositions[partianY];
+    private void clearSpace(int partionY) {
+        BlockPos partionPosition = this.partionPositions[partionY];
         if (partionPosition != null) {
             int offsetX = partionPosition.getX() << 4;
             int offsetY = partionPosition.getY() << 4;

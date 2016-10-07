@@ -9,6 +9,8 @@ import net.gegy1000.blocksystems.server.blocksystem.chunk.BlockSystemChunk;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.IChunkProvider;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.world.ChunkEvent;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 import org.apache.logging.log4j.LogManager;
@@ -50,7 +52,7 @@ public class MultiplayerChunkCacheBlockSystem implements IChunkProvider {
     public BlockSystemChunk loadChunk(int chunkX, int chunkZ) {
         BlockSystemChunk chunk = new BlockSystemChunk(this.blockSystem, chunkX, chunkZ);
         this.chunkMapping.put(ChunkPos.asLong(chunkX, chunkZ), chunk);
-        net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(new net.minecraftforge.event.world.ChunkEvent.Load(chunk));
+        MinecraftForge.EVENT_BUS.post(new ChunkEvent.Load(chunk));
         chunk.setChunkLoaded(true);
         return chunk;
     }

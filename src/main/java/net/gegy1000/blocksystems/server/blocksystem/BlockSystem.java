@@ -4,6 +4,7 @@ import com.google.common.base.Function;
 import com.google.common.base.Predicate;
 import net.gegy1000.blocksystems.BlockSystems;
 import net.gegy1000.blocksystems.server.entity.BlockSystemControlEntity;
+import net.gegy1000.blocksystems.server.util.Matrix;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
@@ -30,7 +31,6 @@ import net.minecraft.world.biome.Biome;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
-import net.gegy1000.blocksystems.server.util.Matrix;
 
 import javax.vecmath.Point3d;
 import javax.vecmath.Vector3d;
@@ -125,7 +125,7 @@ public abstract class BlockSystem extends World {
         compound.setDouble("PosZ", this.posZ);
         compound.setFloat("RotationX", this.rotationX);
         compound.setFloat("RotationY", this.rotationY);
-        compound.setFloat("RotationZ", this.rotationZ); //TODO Load blocks from chunk
+        compound.setFloat("RotationZ", this.rotationZ);
         return compound;
     }
 

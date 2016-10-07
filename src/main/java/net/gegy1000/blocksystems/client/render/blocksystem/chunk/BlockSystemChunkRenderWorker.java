@@ -46,7 +46,7 @@ public class BlockSystemChunkRenderWorker implements Runnable {
         while (this.shouldRun) {
             try {
                 this.processTask(this.dispatcher.getNextChunkUpdate());
-            } catch (InterruptedException var3) {
+            } catch (InterruptedException e) {
                 LOGGER.debug("Stopping chunk worker due to interrupt");
                 return;
             } catch (Throwable throwable) {
