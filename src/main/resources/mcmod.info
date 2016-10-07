@@ -1,0 +1,16 @@
+[
+{
+  "modid": "blocksystems",
+  "name": "BlockSystems",
+  "description": "BlockSystems are a way to have a rotatable, movable world, independent of the block grid inside your main world.",
+  "version": "${version}",
+  "mcversion": "${mcversion}",
+  "url": "",
+  "updateUrl": "",
+  "authorList": ["gegy1000"],
+  "credits": "pau101",
+  "logoFile": "",
+  "screenshots": [],
+  "dependencies": []
+}
+]
