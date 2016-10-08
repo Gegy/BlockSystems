@@ -3,6 +3,7 @@ package net.gegy1000.blocksystems.client.blocksystem;
 import com.google.common.base.Objects;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import net.gegy1000.blocksystems.client.blocksystem.chunk.ClientBlockSystemChunk;
 import net.gegy1000.blocksystems.client.blocksystem.chunk.EmptyBlockSystemChunk;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
 import net.gegy1000.blocksystems.server.blocksystem.chunk.BlockSystemChunk;
@@ -50,7 +51,7 @@ public class MultiplayerChunkCacheBlockSystem implements IChunkProvider {
     }
 
     public BlockSystemChunk loadChunk(int chunkX, int chunkZ) {
-        BlockSystemChunk chunk = new BlockSystemChunk(this.blockSystem, chunkX, chunkZ);
+        BlockSystemChunk chunk = new ClientBlockSystemChunk(this.blockSystem, chunkX, chunkZ);
         this.chunkMapping.put(ChunkPos.asLong(chunkX, chunkZ), chunk);
         MinecraftForge.EVENT_BUS.post(new ChunkEvent.Load(chunk));
         chunk.setChunkLoaded(true);

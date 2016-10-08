@@ -76,10 +76,13 @@ public class ServerChunkCacheBlockSystem extends ChunkProviderServer {
     public Chunk loadChunk(int x, int z, Runnable runnable) {
         Chunk chunk = this.getLoadedChunk(x, z);
         if (chunk == null) {
-            long pos = ChunkPos.asLong(x, z);
-            chunk = new BlockSystemChunk(this.world, x, z);
-            this.id2ChunkMap.put(pos, chunk);
-            chunk.onChunkLoad();
+            chunk = this.world.getSavedChunk(new ChunkPos(x, z));
+            if (chunk == null) {
+                long pos = ChunkPos.asLong(x, z);
+                chunk = new BlockSystemChunk(this.world, x, z);
+                this.id2ChunkMap.put(pos, chunk);
+                chunk.onChunkLoad();
+            }
         }
         if (runnable != null) {
             runnable.run();
@@ -97,22 +100,22 @@ public class ServerChunkCacheBlockSystem extends ChunkProviderServer {
         return chunk;
     }
 
-    private void saveChunkExtraData(Chunk chunkIn) {
+    private void saveChunkExtraData(Chunk chunk) {
         try {
-            this.chunkLoader.saveExtraChunkData(this.world, chunkIn);
+            this.chunkLoader.saveExtraChunkData(this.world, chunk);
         } catch (Exception exception) {
-            LOGGER.error("Couldn\'t save entities", exception);
+            LOGGER.error("Couldn't save entities", exception);
         }
     }
 
-    private void saveChunkData(Chunk chunkIn) {
+    private void saveChunkData(Chunk chunk) {
         try {
-            chunkIn.setLastSaveTime(this.world.getTotalWorldTime());
-            this.chunkLoader.saveChunk(this.world, chunkIn);
-        } catch (IOException ioexception) {
-            LOGGER.error("Couldn\'t save chunk", ioexception);
-        } catch (MinecraftException minecraftexception) {
-            LOGGER.error("Couldn\'t save chunk; already in use by another instance of Minecraft?", minecraftexception);
+            chunk.setLastSaveTime(this.world.getTotalWorldTime());
+            this.chunkLoader.saveChunk(this.world, chunk);
+        } catch (IOException e) {
+            LOGGER.error("Couldn't save chunk", e);
+        } catch (MinecraftException e) {
+            LOGGER.error("Couldn't save chunk; already in use by another instance of Minecraft?", e);
         }
     }
 

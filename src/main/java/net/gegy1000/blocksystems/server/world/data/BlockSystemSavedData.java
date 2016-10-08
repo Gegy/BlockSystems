@@ -4,20 +4,22 @@ import net.gegy1000.blocksystems.BlockSystems;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
-import net.minecraft.nbt.NBTTagLong;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldSavedData;
 import net.minecraft.world.storage.MapStorage;
 import net.minecraftforge.common.util.Constants;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 public class BlockSystemSavedData extends WorldSavedData {
     private static final ThreadLocal<World> READING_WORLD = new ThreadLocal<>();
+    private static final Map<World, List<BlockPos>> QUEUED_PARTIONS = new HashMap<>();
 
     public static final String KEY = "block_systems";
 
@@ -51,10 +53,6 @@ public class BlockSystemSavedData extends WorldSavedData {
         this.world = READING_WORLD.get();
         this.partions.clear();
         this.blockSystems.clear();
-        NBTTagList partionsList = compound.getTagList("Partions", Constants.NBT.TAG_LONG);
-        for (int i = 0; i < partionsList.tagCount(); i++) {
-            this.partions.add(BlockPos.fromLong(((NBTTagLong) partionsList.get(i)).getLong()));
-        }
         NBTTagList blockSystemsList = compound.getTagList("BlockSystems", Constants.NBT.TAG_COMPOUND);
         for (int i = 0; i < blockSystemsList.tagCount(); i++) {
             NBTTagCompound tag = blockSystemsList.getCompoundTagAt(i);
@@ -63,15 +61,14 @@ public class BlockSystemSavedData extends WorldSavedData {
             BlockSystems.PROXY.getBlockSystemHandler(this.world).loadBlockSystem(system);
             this.addBlockSystem(system);
         }
+        List<BlockPos> queuedPartions = QUEUED_PARTIONS.remove(this.world);
+        for (BlockPos partian : queuedPartions) {
+            this.addPartion(partian);
+        }
     }
 
     @Override
     public NBTTagCompound writeToNBT(NBTTagCompound compound) {
-        NBTTagList partionsList = new NBTTagList();
-        for (BlockPos pos : this.partions) {
-            partionsList.appendTag(new NBTTagLong(pos.toLong()));
-        }
-        compound.setTag("Partions", partionsList);
         NBTTagList blockSystemsList = new NBTTagList();
         for (Map.Entry<Integer, BlockSystem> entry : this.blockSystems.entrySet()) {
             NBTTagCompound tag = entry.getValue().serialize(new NBTTagCompound());
@@ -84,14 +81,11 @@ public class BlockSystemSavedData extends WorldSavedData {
     public void addPartion(BlockPos pos) {
         if (!this.partions.contains(pos)) {
             this.partions.add(pos);
-            this.markDirty();
         }
     }
 
     public void deletePartion(BlockPos pos) {
-        if (this.partions.remove(pos)) {
-            this.markDirty();
-        }
+        this.partions.remove(pos);
     }
 
     public boolean hasPartion(BlockPos pos) {
@@ -110,5 +104,14 @@ public class BlockSystemSavedData extends WorldSavedData {
     public void removeBlockSystem(int blockSystem) {
         this.blockSystems.remove(blockSystem);
         this.markDirty();
+    }
+
+    public static void addPartionToQueue(World world, BlockPos pos) {
+        List<BlockPos> partions = QUEUED_PARTIONS.get(world);
+        if (partions == null) {
+            partions = new ArrayList<>();
+            QUEUED_PARTIONS.put(world, partions);
+        }
+        partions.add(pos);
     }
 }

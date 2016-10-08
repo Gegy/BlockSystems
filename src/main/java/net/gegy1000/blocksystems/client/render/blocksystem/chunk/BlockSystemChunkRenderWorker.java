@@ -9,9 +9,11 @@ import net.minecraft.client.renderer.RegionRenderCacheBuilder;
 import net.minecraft.client.renderer.chunk.CompiledChunk;
 import net.minecraft.crash.CrashReport;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.BlockRenderLayer;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Vec3i;
 import net.minecraft.world.World;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
@@ -20,6 +22,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.annotation.Nullable;
+import javax.vecmath.Point3d;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CancellationException;
@@ -66,9 +69,10 @@ public class BlockSystemChunkRenderWorker implements Runnable {
                 }
                 return;
             }
-            BlockPos playerPos = new BlockPos(Minecraft.getMinecraft().thePlayer);
+            EntityPlayer player = Minecraft.getMinecraft().thePlayer;
+            Point3d playerPos = generator.getChunk().getBlockSystem().getUntransformedPosition(new Point3d(player.posX, player.posY, player.posZ));
             BlockPos chunkPosition = generator.getChunk().getPosition();
-            if (chunkPosition.add(8, 8, 8).distanceSq(playerPos) > 576.0D) {
+            if (chunkPosition.add(8, 8, 8).distanceSq(new Vec3i(playerPos.getX(), playerPos.getY(), playerPos.getZ())) > 576.0D) {
                 BlockSystem blockSystem = generator.getChunk().getBlockSystem();
                 BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos(chunkPosition);
                 if (!this.isChunkExisting(pos.setPos(chunkPosition).move(EnumFacing.WEST, 16), blockSystem) || !this.isChunkExisting(pos.setPos(chunkPosition).move(EnumFacing.NORTH, 16), blockSystem) || !this.isChunkExisting(pos.setPos(chunkPosition).move(EnumFacing.EAST, 16), blockSystem) || !this.isChunkExisting(pos.setPos(chunkPosition).move(EnumFacing.SOUTH, 16), blockSystem)) {

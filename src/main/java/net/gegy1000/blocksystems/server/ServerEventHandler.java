@@ -44,14 +44,6 @@ public class ServerEventHandler {
             ServerBlockSystemHandler handler = BlockSystems.PROXY.getBlockSystemHandler(world);
             Map<Integer, BlockSystem> blockSystems = handler.getBlockSystems();
             handler.addPlayer(player);
-            if (world instanceof WorldServer && player instanceof EntityPlayerMP) {
-                for (Map.Entry<Integer, BlockSystem> entry : blockSystems.entrySet()) {
-                    BlockSystem blockSystem = entry.getValue();
-                    if (blockSystem instanceof BlockSystemServer) {
-                        ((BlockSystemServer) blockSystem).getChunkTracker().addPlayer((EntityPlayerMP) player);
-                    }
-                }
-            }
         }
     }
 

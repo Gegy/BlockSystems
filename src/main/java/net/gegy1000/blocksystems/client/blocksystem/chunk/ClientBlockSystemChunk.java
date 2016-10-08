@@ -4,6 +4,8 @@ import net.gegy1000.blocksystems.client.render.blocksystem.BlockSystemRenderHand
 import net.gegy1000.blocksystems.client.render.blocksystem.BlockSystemRenderer;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
 import net.gegy1000.blocksystems.server.blocksystem.chunk.BlockSystemChunk;
+import net.minecraft.init.Blocks;
+import net.minecraft.network.PacketBuffer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.chunk.Chunk;
@@ -47,5 +49,20 @@ public class ClientBlockSystemChunk extends BlockSystemChunk {
             }
         }
         return tile;
+    }
+
+    @Override
+    public void fillChunk(PacketBuffer buf, int available, boolean loadChunk) {
+        super.fillChunk(buf, available, loadChunk);
+        this.blockCount = 0;
+        for (int x = 0; x < 16; x++) {
+            for (int y = 0; y < 256; y++) {
+                for (int z = 0; z < 16; z++) {
+                    if (this.getBlockState(x, y, z).getBlock() != Blocks.AIR) {
+                        this.blockCount++;
+                    }
+                }
+            }
+        }
     }
 }

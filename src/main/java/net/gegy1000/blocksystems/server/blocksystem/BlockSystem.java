@@ -3,6 +3,7 @@ package net.gegy1000.blocksystems.server.blocksystem;
 import com.google.common.base.Function;
 import com.google.common.base.Predicate;
 import net.gegy1000.blocksystems.BlockSystems;
+import net.gegy1000.blocksystems.server.blocksystem.chunk.BlockSystemChunk;
 import net.gegy1000.blocksystems.server.entity.BlockSystemControlEntity;
 import net.gegy1000.blocksystems.server.util.Matrix;
 import net.minecraft.block.Block;
@@ -13,6 +14,7 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Biomes;
 import net.minecraft.init.Blocks;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTTagList;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
@@ -21,6 +23,7 @@ import net.minecraft.util.SoundCategory;
 import net.minecraft.util.SoundEvent;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.util.math.Vec3d;
@@ -29,6 +32,7 @@ import net.minecraft.world.World;
 import net.minecraft.world.WorldType;
 import net.minecraft.world.biome.Biome;
 import net.minecraft.world.chunk.Chunk;
+import net.minecraftforge.common.util.Constants;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
@@ -41,9 +45,6 @@ import java.util.Map;
 import java.util.UUID;
 
 public abstract class BlockSystem extends World {
-    public static final int MAX_SIZE = 128;
-    public static final int HALF_SIZE = MAX_SIZE / 2;
-
     public static int nextID = 0;
 
     public static BlockSystem transforming;
@@ -75,6 +76,10 @@ public abstract class BlockSystem extends World {
     protected boolean removed;
 
     protected int id;
+
+    protected AxisAlignedBB bounds = new AxisAlignedBB(-64, -64, -64, 64, 64, 64);
+
+    protected Map<ChunkPos, BlockSystemChunk> savedChunks = new HashMap<>();
 
     public BlockSystem(World mainWorld, int id, MinecraftServer server) {
         super(new BlockSystemSaveHandler(), mainWorld.getWorldInfo(), mainWorld.provider, mainWorld.theProfiler, mainWorld.isRemote);
@@ -115,6 +120,14 @@ public abstract class BlockSystem extends World {
         this.rotationX = compound.getFloat("RotationX");
         this.rotationY = compound.getFloat("RotationY");
         this.rotationZ = compound.getFloat("RotationZ");
+        NBTTagList chunksList = compound.getTagList("Chunks", Constants.NBT.TAG_COMPOUND);
+        for (int i = 0; i < chunksList.tagCount(); i++) {
+            NBTTagCompound chunkTag = chunksList.getCompoundTagAt(i);
+            ChunkPos pos = new ChunkPos(chunkTag.getInteger("x"), chunkTag.getInteger("z"));
+            BlockSystemChunk chunk = new BlockSystemChunk(this, pos.chunkXPos, pos.chunkXPos);
+            chunk.deserialize(chunkTag);
+            this.savedChunks.put(pos, chunk);
+        }
         this.deserializing = false;
         this.recalculateMatrices();
     }
@@ -126,6 +139,19 @@ public abstract class BlockSystem extends World {
         compound.setFloat("RotationX", this.rotationX);
         compound.setFloat("RotationY", this.rotationY);
         compound.setFloat("RotationZ", this.rotationZ);
+        NBTTagList chunksList = new NBTTagList();
+        for (Map.Entry<ChunkPos, BlockSystemChunk> entry : this.savedChunks.entrySet()) {
+            BlockSystemChunk chunk = entry.getValue();
+            if (!chunk.isEmpty()) {
+                ChunkPos pos = entry.getKey();
+                NBTTagCompound chunkTag = new NBTTagCompound();
+                chunkTag.setInteger("x", pos.chunkXPos);
+                chunkTag.setInteger("z", pos.chunkZPos);
+                chunk.serialize(chunkTag);
+                chunksList.appendTag(chunkTag);
+            }
+        }
+        compound.setTag("Chunks", chunksList);
         return compound;
     }
 
@@ -342,7 +368,6 @@ public abstract class BlockSystem extends World {
             this.setPositionAndRotation(this.boundEntity.posX, this.boundEntity.posY, this.boundEntity.posZ, this.boundEntity.rotationPitch, this.boundEntity.rotationYaw, this.rotationZ);
         }
 
-        //TODO Improve trackers further
         List<EntityPlayer> remove = new ArrayList<>();
 
         for (Map.Entry<EntityPlayer, BlockSystemPlayerHandler> entry : this.playerHandlers.entrySet()) {
@@ -521,12 +546,33 @@ public abstract class BlockSystem extends World {
         return this.mainWorld;
     }
 
+    public void addSavedChunk(BlockSystemChunk chunk) {
+        this.savedChunks.put(new ChunkPos(chunk.xPosition, chunk.zPosition), chunk);
+    }
+
+    public void removeSavedChunk(BlockSystemChunk chunk) {
+        this.removeSavedChunk(new ChunkPos(chunk.xPosition, chunk.zPosition));
+    }
+
+    public void removeSavedChunk(ChunkPos pos) {
+        this.savedChunks.remove(pos);
+    }
+
+    public BlockSystemChunk getSavedChunk(ChunkPos pos) {
+        return this.savedChunks.get(pos);
+    }
+
     public boolean isValid(BlockPos pos) {
-        return pos.getX() <= HALF_SIZE && pos.getX() >= -HALF_SIZE && pos.getY() <= HALF_SIZE && pos.getY() >= -HALF_SIZE && pos.getZ() <= HALF_SIZE && pos.getZ() >= -HALF_SIZE;
+        return this.bounds.isVecInside(new Vec3d(pos.getX(), pos.getY(), pos.getZ()));
     }
 
     public boolean isRemoved() {
         return this.removed;
+    }
+
+    public BlockSystem withBounds(AxisAlignedBB bounds) {
+        this.bounds = bounds;
+        return this;
     }
 
     public void setPositionAndRotation(double posX, double posY, double posZ, float rotationX, float rotationY, float rotationZ) {
