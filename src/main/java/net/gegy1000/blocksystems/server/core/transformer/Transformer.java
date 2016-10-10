@@ -159,6 +159,11 @@ public abstract class Transformer implements Opcodes {
             return this;
         }
 
+        public Instruction node(AbstractInsnNode node) {
+            this.insert.add(() -> node);
+            return this;
+        }
+
         public InsnList build() {
             InsnList build = new InsnList();
             for (Supplier<AbstractInsnNode> node : this.insert) {

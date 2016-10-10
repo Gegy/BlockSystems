@@ -1,13 +1,29 @@
 package net.gegy1000.blocksystems.server.core;
 
+import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
+import net.gegy1000.blocksystems.server.world.BlockSystemWorldAccess;
+import net.gegy1000.blocksystems.server.world.HookedChunk;
 import net.minecraft.client.particle.Particle;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
-import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
+import net.minecraft.world.chunk.Chunk;
 
 import javax.vecmath.Point3d;
+import java.util.HashMap;
+import java.util.Map;
 
 public class BlockSystemHooks {
+    private static final Map<World, HookedChunk> HOOKED_CHUNKS = new HashMap<>();
+
+    public static void onWorldLoad(World world) {
+        HOOKED_CHUNKS.put(world, new HookedChunk(world, 0, 0));
+    }
+
+    public static void onWorldUnload(World world) {
+        HOOKED_CHUNKS.remove(world);
+    }
+
     public static void transformEffect(Particle particle) {
         BlockSystem transforming = BlockSystem.transforming;
         if (transforming != null) {
@@ -28,5 +44,18 @@ public class BlockSystemHooks {
             return ((BlockSystem) world).getMainWorld();
         }
         return world;
+    }
+
+    public static boolean checkBlockAccess(World world, BlockPos pos) {
+        boolean outsideWorldHeight = pos.getY() < 0 || pos.getY() >= 256;
+        boolean partitionSpace = pos.getX() <= -30000000 || pos.getX() > 29999984 || pos.getZ() <= -30000000 || pos.getZ() > 29999984;
+        return outsideWorldHeight || (partitionSpace && !BlockSystemWorldAccess.canAccess(world) && !(world instanceof BlockSystem));
+    }
+
+    public static Chunk getChunk(World world, int x, int z) {
+        if (BlockSystemHooks.checkBlockAccess(world, new BlockPos(x << 4, 0, z << 4))) {
+            return HOOKED_CHUNKS.get(world);
+        }
+        return world.getChunkProvider().provideChunk(x, z);
     }
 }

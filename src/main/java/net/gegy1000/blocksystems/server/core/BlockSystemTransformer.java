@@ -3,6 +3,7 @@ package net.gegy1000.blocksystems.server.core;
 import net.gegy1000.blocksystems.server.core.transformer.Transformer;
 import net.gegy1000.blocksystems.server.transformer.EntityTransformer;
 import net.gegy1000.blocksystems.server.transformer.ParticleManagerTransformer;
+import net.gegy1000.blocksystems.server.transformer.WorldTransformer;
 import net.minecraft.launchwrapper.IClassTransformer;
 import net.minecraftforge.fml.relauncher.FMLRelaunchLog;
 import net.gegy1000.blocksystems.server.transformer.EntityListTransformer;
@@ -83,6 +84,7 @@ public class BlockSystemTransformer implements IClassTransformer {
         this.transformers.add(new ParticleManagerTransformer());
         this.transformers.add(new EntityTransformer());
         this.transformers.add(new EntityListTransformer());
+        this.transformers.add(new WorldTransformer());
     }
 
     private void saveBytecode(String name, ClassWriter classWriter) {

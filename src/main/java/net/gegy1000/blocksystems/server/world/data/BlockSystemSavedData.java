@@ -26,7 +26,7 @@ public class BlockSystemSavedData extends WorldSavedData {
     private World world;
 
     private Map<Integer, BlockSystem> blockSystems = new HashMap<>();
-    private Set<BlockPos> partions = new HashSet<>();
+    private Set<BlockPos> partitions = new HashSet<>();
 
     public BlockSystemSavedData() {
         this(KEY);
@@ -51,19 +51,22 @@ public class BlockSystemSavedData extends WorldSavedData {
     @Override
     public void readFromNBT(NBTTagCompound compound) {
         this.world = READING_WORLD.get();
-        this.partions.clear();
+        this.partitions.clear();
         this.blockSystems.clear();
-        NBTTagList blockSystemsList = compound.getTagList("BlockSystems", Constants.NBT.TAG_COMPOUND);
-        for (int i = 0; i < blockSystemsList.tagCount(); i++) {
-            NBTTagCompound tag = blockSystemsList.getCompoundTagAt(i);
-            BlockSystem system = BlockSystems.PROXY.createBlockSystem(this.world, BlockSystem.nextID++);
-            system.deserialize(tag);
-            BlockSystems.PROXY.getBlockSystemHandler(this.world).loadBlockSystem(system);
-            this.addBlockSystem(system);
-        }
-        List<BlockPos> queuedPartions = QUEUED_PARTIONS.remove(this.world);
-        for (BlockPos partian : queuedPartions) {
-            this.addPartion(partian);
+        try {
+            NBTTagList blockSystemsList = compound.getTagList("BlockSystems", Constants.NBT.TAG_COMPOUND);
+            for (int i = 0; i < blockSystemsList.tagCount(); i++) {
+                NBTTagCompound tag = blockSystemsList.getCompoundTagAt(i);
+                BlockSystem system = BlockSystems.PROXY.createBlockSystem(this.world, BlockSystem.nextID++);
+                system.deserialize(tag);
+                BlockSystems.PROXY.getBlockSystemHandler(this.world).loadBlockSystem(system);
+                this.addBlockSystem(system);
+            }
+        } finally {
+            List<BlockPos> queuedPartitions = QUEUED_PARTIONS.remove(this.world);
+            for (BlockPos partition : queuedPartitions) {
+                this.addPartition(partition);
+            }
         }
     }
 
@@ -78,18 +81,18 @@ public class BlockSystemSavedData extends WorldSavedData {
         return compound;
     }
 
-    public void addPartion(BlockPos pos) {
-        if (!this.partions.contains(pos)) {
-            this.partions.add(pos);
+    public void addPartition(BlockPos pos) {
+        if (!this.partitions.contains(pos)) {
+            this.partitions.add(pos);
         }
     }
 
-    public void deletePartion(BlockPos pos) {
-        this.partions.remove(pos);
+    public void deletePartition(BlockPos pos) {
+        this.partitions.remove(pos);
     }
 
-    public boolean hasPartion(BlockPos pos) {
-        return this.partions.contains(pos);
+    public boolean hasPartition(BlockPos pos) {
+        return this.partitions.contains(pos);
     }
 
     public void addBlockSystem(BlockSystem blockSystem) {
@@ -106,12 +109,12 @@ public class BlockSystemSavedData extends WorldSavedData {
         this.markDirty();
     }
 
-    public static void addPartionToQueue(World world, BlockPos pos) {
-        List<BlockPos> partions = QUEUED_PARTIONS.get(world);
-        if (partions == null) {
-            partions = new ArrayList<>();
-            QUEUED_PARTIONS.put(world, partions);
+    public static void addPartitionToQueue(World world, BlockPos pos) {
+        List<BlockPos> partitions = QUEUED_PARTIONS.get(world);
+        if (partitions == null) {
+            partitions = new ArrayList<>();
+            QUEUED_PARTIONS.put(world, partitions);
         }
-        partions.add(pos);
+        partitions.add(pos);
     }
 }

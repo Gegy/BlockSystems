@@ -5,6 +5,8 @@ import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystemServer;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystemTrackingHandler;
 import net.gegy1000.blocksystems.server.blocksystem.ServerBlockSystemHandler;
+import net.gegy1000.blocksystems.server.core.BlockSystemHooks;
+import net.gegy1000.blocksystems.server.world.BlockSystemWorldAccess;
 import net.gegy1000.blocksystems.server.world.data.BlockSystemSavedData;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
@@ -82,6 +84,7 @@ public class ServerEventHandler {
         if (world instanceof WorldServer) {
             BlockSystemTrackingHandler.add((WorldServer) world);
         }
+        BlockSystemHooks.onWorldLoad(world);
     }
 
     @SubscribeEvent
@@ -91,5 +94,7 @@ public class ServerEventHandler {
         if (world instanceof WorldServer) {
             BlockSystemTrackingHandler.remove((WorldServer) world);
         }
+        BlockSystemWorldAccess.unloadWorld(world);
+        BlockSystemHooks.onWorldUnload(world);
     }
 }

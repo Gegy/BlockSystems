@@ -6,14 +6,14 @@ import net.minecraft.world.World;
 
 import java.util.Random;
 
-public class ChunkPartionHandler {
-    public static BlockPos generateValidPartionPosition(World world) {
+public class ChunkPartitionHandler {
+    public static BlockPos generateValidPartitionPosition(World world) {
         BlockSystemSavedData data = BlockSystemSavedData.get(world);
         int attempts = 0;
         while (attempts < 100) {
-            BlockPos position = ChunkPartionHandler.generatePartionPosition();
-            if (!data.hasPartion(position)) {
-                data.addPartion(position);
+            BlockPos position = ChunkPartitionHandler.generatePartitionPosition();
+            if (!data.hasPartition(position)) {
+                data.addPartition(position);
                 return position;
             }
             attempts++;
@@ -21,7 +21,7 @@ public class ChunkPartionHandler {
         return null;
     }
 
-    public static BlockPos generatePartionPosition() {
+    public static BlockPos generatePartitionPosition() {
         int size = 1875000;
         Random random = new Random();
         int x = random.nextInt(size * 2) - size;

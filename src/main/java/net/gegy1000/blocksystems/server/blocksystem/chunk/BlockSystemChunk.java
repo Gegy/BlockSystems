@@ -1,6 +1,7 @@
 package net.gegy1000.blocksystems.server.blocksystem.chunk;
 
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
+import net.gegy1000.blocksystems.server.world.BlockSystemWorldAccess;
 import net.gegy1000.blocksystems.server.world.data.BlockSystemSavedData;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
@@ -20,7 +21,7 @@ public class BlockSystemChunk extends Chunk {
 
     protected boolean loading;
 
-    protected BlockPos[] partionPositions = new BlockPos[16];
+    protected BlockPos[] partitionPositions = new BlockPos[16];
 
     protected int blockCount;
 
@@ -41,44 +42,47 @@ public class BlockSystemChunk extends Chunk {
             this.blockCount++;
         }
         if (!this.loading) {
-            BlockPos partionPosition = this.partionPositions[pos.getY() >> 4];
-            if (partionPosition != null) {
-                this.mainWorld.setBlockState(new BlockPos(partionPosition.getX() << 4 + pos.getX(), pos.getY(), partionPosition.getZ() << 4 + pos.getZ()), state);
+            BlockPos partitionPosition = this.partitionPositions[pos.getY() >> 4];
+            if (partitionPosition != null) {
+                int offsetX = partitionPosition.getX() << 4;
+                int offsetY = partitionPosition.getY() << 4;
+                int offsetZ = partitionPosition.getZ() << 4;
+                BlockSystemWorldAccess.setBlockState(this.mainWorld, pos.add(offsetX, offsetY, offsetZ), state);
             }
         }
         return super.setBlockState(pos, state);
     }
 
     public NBTTagCompound serialize(NBTTagCompound compound) {
-        NBTTagList partionPositions = new NBTTagList();
-        for (int i = 0; i < this.partionPositions.length; i++) {
-            if (this.partionPositions[i] != null) {
+        NBTTagList partitionPositions = new NBTTagList();
+        for (int i = 0; i < this.partitionPositions.length; i++) {
+            if (this.partitionPositions[i] != null) {
                 NBTTagCompound tag = new NBTTagCompound();
                 tag.setByte("i", (byte) i);
-                tag.setLong("p", this.partionPositions[i].toLong());
-                partionPositions.appendTag(tag);
+                tag.setLong("p", this.partitionPositions[i].toLong());
+                partitionPositions.appendTag(tag);
             }
         }
-        compound.setTag("PartionPositions", partionPositions);
+        compound.setTag("PartitionPositions", partitionPositions);
         return compound;
     }
 
     public void deserialize(NBTTagCompound compound) {
         this.loading = true;
         this.blockCount = 0;
-        NBTTagList partionPositions = compound.getTagList("PartionPositions", Constants.NBT.TAG_COMPOUND);
-        for (int i = 0; i < partionPositions.tagCount(); i++) {
-            NBTTagCompound tag = partionPositions.getCompoundTagAt(i);
-            this.partionPositions[tag.getByte("i")] = BlockPos.fromLong(tag.getLong("p"));
+        NBTTagList partitionPositions = compound.getTagList("PartitionPositions", Constants.NBT.TAG_COMPOUND);
+        for (int i = 0; i < partitionPositions.tagCount(); i++) {
+            NBTTagCompound tag = partitionPositions.getCompoundTagAt(i);
+            this.partitionPositions[tag.getByte("i")] = BlockPos.fromLong(tag.getLong("p"));
         }
-        for (int partionY = 0; partionY < 16; partionY++) {
-            BlockPos partionPosition = this.partionPositions[partionY];
-            if (partionPosition != null) {
-                BlockSystemSavedData.addPartionToQueue(this.mainWorld, partionPosition);
-                Chunk chunk = this.mainWorld.getChunkFromChunkCoords(partionPosition.getX(), partionPosition.getZ());
+        for (int partitionY = 0; partitionY < 16; partitionY++) {
+            BlockPos partitionPosition = this.partitionPositions[partitionY];
+            if (partitionPosition != null) {
+                BlockSystemSavedData.addPartitionToQueue(this.mainWorld, partitionPosition);
+                Chunk chunk = BlockSystemWorldAccess.getChunk(this.mainWorld, partitionPosition.getX(), partitionPosition.getZ());
                 BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
                 BlockPos.MutableBlockPos chunkPos = new BlockPos.MutableBlockPos();
-                int offsetY = partionPosition.getY() << 4;
+                int offsetY = partitionPosition.getY() << 4;
                 for (int x = 0; x < 16; x++) {
                     for (int y = 0; y < 16; y++) {
                         for (int z = 0; z < 16; z++) {
@@ -97,25 +101,24 @@ public class BlockSystemChunk extends Chunk {
         if (!this.mainWorld.isRemote) {
             for (int y = 0; y < 16; y++) {
                 BlockSystemSavedData data = BlockSystemSavedData.get(this.mainWorld);
-                data.deletePartion(this.partionPositions[y]);
+                data.deletePartition(this.partitionPositions[y]);
                 this.clearSpace(y);
             }
         }
         this.blockSystem.removeSavedChunk(this);
     }
 
-    private void clearSpace(int partionY) {
-        BlockPos partionPosition = this.partionPositions[partionY];
-        if (partionPosition != null) {
-            int offsetX = partionPosition.getX() << 4;
-            int offsetY = partionPosition.getY() << 4;
-            int offsetZ = partionPosition.getZ() << 4;
+    private void clearSpace(int partitionY) {
+        BlockPos partitionPosition = this.partitionPositions[partitionY];
+        if (partitionPosition != null) {
+            Chunk chunk = BlockSystemWorldAccess.getChunk(this.mainWorld, partitionPosition.getX(), partitionPosition.getZ());
             BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+            int offsetY = partitionPosition.getY() << 4;
             for (int x = 0; x < 16; x++) {
                 for (int y = 0; y < 16; y++) {
                     for (int z = 0; z < 16; z++) {
-                        pos.setPos(offsetX + x, offsetY + y, offsetZ + z);
-                        this.mainWorld.setBlockState(pos, Blocks.AIR.getDefaultState());
+                        pos.setPos(x, offsetY + y, z);
+                        chunk.setBlockState(pos, Blocks.AIR.getDefaultState());
                     }
                 }
             }
@@ -128,8 +131,8 @@ public class BlockSystemChunk extends Chunk {
         if (!this.mainWorld.isRemote) {
             for (int y = 0; y < 16; y++) {
                 ExtendedBlockStorage storage = this.getBlockStorageArray()[y];
-                if (storage != NULL_BLOCK_STORAGE && !storage.isEmpty() && this.partionPositions[y] == null) {
-                    this.partionPositions[y] = ChunkPartionHandler.generateValidPartionPosition(this.mainWorld);
+                if (this.partitionPositions[y] == null && storage != NULL_BLOCK_STORAGE && !storage.isEmpty()) {
+                    this.partitionPositions[y] = ChunkPartitionHandler.generateValidPartitionPosition(this.mainWorld);
                     this.clearSpace(y);
                 }
             }
