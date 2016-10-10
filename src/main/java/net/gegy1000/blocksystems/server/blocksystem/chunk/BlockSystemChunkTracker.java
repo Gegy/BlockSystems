@@ -61,7 +61,7 @@ public class BlockSystemChunkTracker {
                         BlockSystemPlayerTracker tracker = iterator.next();
                         Chunk chunk = tracker.getProvidingChunk();
                         if (chunk != null) {
-                            if ((!chunk.isLightPopulated() && chunk.isTerrainPopulated()) || !chunk.isChunkTicked()) {
+                            if ((!chunk.isLightPopulated()) || !chunk.isChunkTicked()) {
                                 return chunk;
                             }
                             if (!tracker.hasPlayerMatchingInRange(128.0D, BlockSystemChunkTracker.NOT_SPECTATOR)) {

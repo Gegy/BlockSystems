@@ -31,7 +31,7 @@ import org.apache.logging.log4j.Logger;
 @Mod(modid = BlockSystems.MODID, name = "BlockSystems", version = BlockSystems.VERSION)
 public class BlockSystems {
     public static final String MODID = "blocksystems";
-    public static final String VERSION = "0.1.0";
+    public static final String VERSION = "0.1.0-dev";
 
     @Mod.Instance(BlockSystems.MODID)
     public static BlockSystems INSTANCE;
