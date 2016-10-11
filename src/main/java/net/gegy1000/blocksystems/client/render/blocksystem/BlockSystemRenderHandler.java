@@ -54,6 +54,8 @@ public class BlockSystemRenderHandler {
             long finishTimeNano = Math.max((long) (1000000000 / framerate / 4) - System.nanoTime(), 0);
             renderer.renderBlockSystem(player, entityX - playerX, entityY - playerY, entityZ - playerZ, rotationX, rotationY, rotationZ, partialTicks, finishTimeNano);
         }
+        GlStateManager.enableCull();
+        GlStateManager.cullFace(GlStateManager.CullFace.BACK);
     }
 
     public static void update() {

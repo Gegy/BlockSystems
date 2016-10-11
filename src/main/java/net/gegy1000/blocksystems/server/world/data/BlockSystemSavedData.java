@@ -84,11 +84,14 @@ public class BlockSystemSavedData extends WorldSavedData {
     public void addPartition(BlockPos pos) {
         if (!this.partitions.contains(pos)) {
             this.partitions.add(pos);
+            this.markDirty();
         }
     }
 
     public void deletePartition(BlockPos pos) {
-        this.partitions.remove(pos);
+        if (this.partitions.remove(pos)) {
+            this.markDirty();
+        }
     }
 
     public boolean hasPartition(BlockPos pos) {

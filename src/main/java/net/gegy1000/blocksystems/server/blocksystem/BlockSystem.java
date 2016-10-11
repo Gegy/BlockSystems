@@ -124,7 +124,7 @@ public abstract class BlockSystem extends World {
         for (int i = 0; i < chunksList.tagCount(); i++) {
             NBTTagCompound chunkTag = chunksList.getCompoundTagAt(i);
             ChunkPos pos = new ChunkPos(chunkTag.getInteger("x"), chunkTag.getInteger("z"));
-            BlockSystemChunk chunk = new BlockSystemChunk(this, pos.chunkXPos, pos.chunkXPos);
+            BlockSystemChunk chunk = new BlockSystemChunk(this, pos.chunkXPos, pos.chunkZPos);
             chunk.deserialize(chunkTag);
             this.savedChunks.put(pos, chunk);
         }

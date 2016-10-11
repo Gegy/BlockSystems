@@ -47,7 +47,7 @@ public class BlockSystemChunk extends Chunk {
                 int offsetX = partitionPosition.getX() << 4;
                 int offsetY = partitionPosition.getY() << 4;
                 int offsetZ = partitionPosition.getZ() << 4;
-                BlockSystemWorldAccess.setBlockState(this.mainWorld, pos.add(offsetX, offsetY, offsetZ), state);
+                BlockSystemWorldAccess.setBlockState(this.mainWorld, new BlockPos((pos.getX() & 15) + offsetX, (pos.getY() & 15) + offsetY, (pos.getZ() & 15) + offsetZ), state);
             }
         }
         return super.setBlockState(pos, state);
@@ -82,12 +82,13 @@ public class BlockSystemChunk extends Chunk {
                 Chunk chunk = BlockSystemWorldAccess.getChunk(this.mainWorld, partitionPosition.getX(), partitionPosition.getZ());
                 BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
                 BlockPos.MutableBlockPos chunkPos = new BlockPos.MutableBlockPos();
-                int offsetY = partitionPosition.getY() << 4;
+                int partitionOffsetY = partitionPosition.getY() << 4;
+                int offsetY = partitionY << 4;
                 for (int x = 0; x < 16; x++) {
                     for (int y = 0; y < 16; y++) {
                         for (int z = 0; z < 16; z++) {
-                            pos.setPos(x, offsetY + y, z);
-                            chunkPos.setPos(x, y, z);
+                            pos.setPos(x, partitionOffsetY + y, z);
+                            chunkPos.setPos(x, offsetY + y, z);
                             this.setBlockState(chunkPos, chunk.getBlockState(pos));
                         }
                     }
@@ -108,16 +109,16 @@ public class BlockSystemChunk extends Chunk {
         this.blockSystem.removeSavedChunk(this);
     }
 
-    private void clearSpace(int partitionY) {
-        BlockPos partitionPosition = this.partitionPositions[partitionY];
+    private void clearSpace(int partitionIndex) {
+        BlockPos partitionPosition = this.partitionPositions[partitionIndex];
         if (partitionPosition != null) {
             Chunk chunk = BlockSystemWorldAccess.getChunk(this.mainWorld, partitionPosition.getX(), partitionPosition.getZ());
             BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-            int offsetY = partitionPosition.getY() << 4;
+            int partitionOffsetY = partitionPosition.getY() << 4;
             for (int x = 0; x < 16; x++) {
                 for (int y = 0; y < 16; y++) {
                     for (int z = 0; z < 16; z++) {
-                        pos.setPos(x, offsetY + y, z);
+                        pos.setPos(x, partitionOffsetY + y, z);
                         chunk.setBlockState(pos, Blocks.AIR.getDefaultState());
                     }
                 }
@@ -128,11 +129,15 @@ public class BlockSystemChunk extends Chunk {
     @Override
     public void onTick(boolean fast) {
         super.onTick(fast);
-        if (!this.mainWorld.isRemote) {
+        if (!this.mainWorld.isRemote && !this.loading) {
             for (int y = 0; y < 16; y++) {
                 ExtendedBlockStorage storage = this.getBlockStorageArray()[y];
                 if (this.partitionPositions[y] == null && storage != NULL_BLOCK_STORAGE && !storage.isEmpty()) {
                     this.partitionPositions[y] = ChunkPartitionHandler.generateValidPartitionPosition(this.mainWorld);
+                    this.clearSpace(y);
+                } else if (this.partitionPositions[y] != null && (storage == NULL_BLOCK_STORAGE || storage.isEmpty())) {
+                    BlockSystemSavedData.get(this.mainWorld).deletePartition(this.partitionPositions[y]);
+                    this.partitionPositions[y] = null;
                     this.clearSpace(y);
                 }
             }
@@ -152,6 +157,6 @@ public class BlockSystemChunk extends Chunk {
 
     @Override
     public boolean isEmpty() {
-         return this.blockCount <= 0;
+        return this.blockCount <= 0;
     }
 }

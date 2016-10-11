@@ -80,6 +80,7 @@ public class ClientBlockSystemHandler extends ServerBlockSystemHandler {
     public void addBlockSystem(BlockSystem blockSystem) {
         super.addBlockSystem(blockSystem);
         BlockSystemRenderHandler.addBlockSystem(blockSystem);
+        blockSystem.addPlayerHandler(MINECRAFT.thePlayer);
     }
 
     @Override
