@@ -7,13 +7,10 @@ import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.init.Blocks;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.nbt.NBTTagList;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
-import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
-import net.minecraftforge.common.util.Constants;
 
 public class BlockSystemChunk extends Chunk {
     protected BlockSystem blockSystem;
@@ -21,7 +18,7 @@ public class BlockSystemChunk extends Chunk {
 
     protected boolean loading;
 
-    protected BlockPos[] partitionPositions = new BlockPos[16];
+    protected BlockPos partitionPosition = null;
 
     protected int blockCount;
 
@@ -42,55 +39,36 @@ public class BlockSystemChunk extends Chunk {
             this.blockCount++;
         }
         if (!this.loading) {
-            BlockPos partitionPosition = this.partitionPositions[pos.getY() >> 4];
-            if (partitionPosition != null) {
-                int offsetX = partitionPosition.getX() << 4;
-                int offsetY = partitionPosition.getY() << 4;
-                int offsetZ = partitionPosition.getZ() << 4;
-                BlockSystemWorldAccess.setBlockState(this.mainWorld, new BlockPos((pos.getX() & 15) + offsetX, (pos.getY() & 15) + offsetY, (pos.getZ() & 15) + offsetZ), state);
+            this.updatePartition();
+            if (this.partitionPosition != null) {
+                int offsetX = this.partitionPosition.getX() << 4;
+                int offsetZ = this.partitionPosition.getZ() << 4;
+                BlockSystemWorldAccess.setBlockState(this.mainWorld, new BlockPos((pos.getX() & 15) + offsetX, pos.getY(), (pos.getZ() & 15) + offsetZ), state);
             }
         }
         return super.setBlockState(pos, state);
     }
 
     public NBTTagCompound serialize(NBTTagCompound compound) {
-        NBTTagList partitionPositions = new NBTTagList();
-        for (int i = 0; i < this.partitionPositions.length; i++) {
-            if (this.partitionPositions[i] != null) {
-                NBTTagCompound tag = new NBTTagCompound();
-                tag.setByte("i", (byte) i);
-                tag.setLong("p", this.partitionPositions[i].toLong());
-                partitionPositions.appendTag(tag);
-            }
+        if (this.partitionPosition != null) {
+            compound.setLong("PartitionPosition", this.partitionPosition.toLong());
         }
-        compound.setTag("PartitionPositions", partitionPositions);
         return compound;
     }
 
     public void deserialize(NBTTagCompound compound) {
         this.loading = true;
         this.blockCount = 0;
-        NBTTagList partitionPositions = compound.getTagList("PartitionPositions", Constants.NBT.TAG_COMPOUND);
-        for (int i = 0; i < partitionPositions.tagCount(); i++) {
-            NBTTagCompound tag = partitionPositions.getCompoundTagAt(i);
-            this.partitionPositions[tag.getByte("i")] = BlockPos.fromLong(tag.getLong("p"));
-        }
-        for (int partitionY = 0; partitionY < 16; partitionY++) {
-            BlockPos partitionPosition = this.partitionPositions[partitionY];
-            if (partitionPosition != null) {
-                BlockSystemSavedData.addPartitionToQueue(this.mainWorld, partitionPosition);
-                Chunk chunk = BlockSystemWorldAccess.getChunk(this.mainWorld, partitionPosition.getX(), partitionPosition.getZ());
-                BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-                BlockPos.MutableBlockPos chunkPos = new BlockPos.MutableBlockPos();
-                int partitionOffsetY = partitionPosition.getY() << 4;
-                int offsetY = partitionY << 4;
-                for (int x = 0; x < 16; x++) {
-                    for (int y = 0; y < 16; y++) {
-                        for (int z = 0; z < 16; z++) {
-                            pos.setPos(x, partitionOffsetY + y, z);
-                            chunkPos.setPos(x, offsetY + y, z);
-                            this.setBlockState(chunkPos, chunk.getBlockState(pos));
-                        }
+        if (compound.hasKey("PartitionPosition")) {
+            this.partitionPosition = BlockPos.fromLong(compound.getLong("PartitionPosition"));
+            BlockSystemSavedData.addPartitionToQueue(this.mainWorld, this.partitionPosition);
+            Chunk chunk = BlockSystemWorldAccess.getChunk(this.mainWorld, this.partitionPosition.getX(), this.partitionPosition.getZ());
+            BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+            for (int x = 0; x < 16; x++) {
+                for (int y = 0; y < 256; y++) {
+                    for (int z = 0; z < 16; z++) {
+                        pos.setPos(x, y, z);
+                        this.setBlockState(pos, chunk.getBlockState(pos));
                     }
                 }
             }
@@ -100,28 +78,20 @@ public class BlockSystemChunk extends Chunk {
 
     public void remove() {
         if (!this.mainWorld.isRemote) {
-            for (int y = 0; y < 16; y++) {
-                BlockSystemSavedData data = BlockSystemSavedData.get(this.mainWorld);
-                data.deletePartition(this.partitionPositions[y]);
-                this.clearSpace(y);
-            }
+            BlockSystemSavedData data = BlockSystemSavedData.get(this.mainWorld);
+            this.clearPartition();
+            data.deletePartition(this.partitionPosition);
         }
         this.blockSystem.removeSavedChunk(this);
     }
 
-    private void clearSpace(int partitionIndex) {
-        BlockPos partitionPosition = this.partitionPositions[partitionIndex];
-        if (partitionPosition != null) {
-            Chunk chunk = BlockSystemWorldAccess.getChunk(this.mainWorld, partitionPosition.getX(), partitionPosition.getZ());
+    private void clearPartition() {
+        if (this.partitionPosition != null) {
+            Chunk chunk = BlockSystemWorldAccess.getChunk(this.mainWorld, this.partitionPosition.getX(), this.partitionPosition.getZ());
             BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-            int partitionOffsetY = partitionPosition.getY() << 4;
-            for (int x = 0; x < 16; x++) {
-                for (int y = 0; y < 16; y++) {
-                    for (int z = 0; z < 16; z++) {
-                        pos.setPos(x, partitionOffsetY + y, z);
-                        chunk.setBlockState(pos, Blocks.AIR.getDefaultState());
-                    }
-                }
+            for (int y = 0; y < 16; y++) {
+                chunk.setBlockState(pos, Blocks.AIR.getDefaultState());
+                chunk.getBlockStorageArray()[y] = NULL_BLOCK_STORAGE;
             }
         }
     }
@@ -130,17 +100,18 @@ public class BlockSystemChunk extends Chunk {
     public void onTick(boolean fast) {
         super.onTick(fast);
         if (!this.mainWorld.isRemote && !this.loading) {
-            for (int y = 0; y < 16; y++) {
-                ExtendedBlockStorage storage = this.getBlockStorageArray()[y];
-                if (this.partitionPositions[y] == null && storage != NULL_BLOCK_STORAGE && !storage.isEmpty()) {
-                    this.partitionPositions[y] = ChunkPartitionHandler.generateValidPartitionPosition(this.mainWorld);
-                    this.clearSpace(y);
-                } else if (this.partitionPositions[y] != null && (storage == NULL_BLOCK_STORAGE || storage.isEmpty())) {
-                    BlockSystemSavedData.get(this.mainWorld).deletePartition(this.partitionPositions[y]);
-                    this.partitionPositions[y] = null;
-                    this.clearSpace(y);
-                }
-            }
+            this.updatePartition();
+        }
+    }
+
+    private void updatePartition() {
+        if (this.partitionPosition == null && !this.isEmpty()) {
+            this.partitionPosition = ChunkPartitionHandler.generateValidPartitionPosition(this.mainWorld);
+            this.clearPartition();
+        } else if (this.partitionPosition != null && this.isEmpty()) {
+            this.clearPartition();
+            BlockSystemSavedData.get(this.mainWorld).deletePartition(this.partitionPosition);
+            this.partitionPosition = null;
         }
     }
 

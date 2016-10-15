@@ -6,7 +6,9 @@ import net.minecraft.command.CommandBase;
 import net.minecraft.command.CommandException;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.init.Blocks;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.gegy1000.blocksystems.server.blocksystem.ServerBlockSystemHandler;
 
@@ -30,6 +32,7 @@ public class BlockSystemCommand extends CommandBase {
             BlockSystem blockSystem = BlockSystems.PROXY.createBlockSystem(world, BlockSystem.nextID++);
             blockSystem.setPositionAndRotation(player.posX, player.posY, player.posZ, player.rotationPitch, player.rotationYaw, 0.0F);
             handler.addBlockSystem(blockSystem);
+            blockSystem.setBlockState(BlockPos.ORIGIN, Blocks.GRASS.getDefaultState(), 3);
         }
     }
 }

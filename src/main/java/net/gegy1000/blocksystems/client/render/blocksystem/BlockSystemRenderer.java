@@ -40,6 +40,7 @@ import net.minecraft.util.BlockRenderLayer;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.SoundCategory;
 import net.minecraft.util.SoundEvent;
+import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.RayTraceResult;
@@ -130,6 +131,28 @@ public class BlockSystemRenderer implements IWorldEventListener {
         GlStateManager.rotate(rotationY, 0.0F, 1.0F, 0.0F);
         GlStateManager.rotate(rotationX, 1.0F, 0.0F, 0.0F);
         GlStateManager.rotate(rotationZ, 0.0F, 0.0F, 1.0F);
+
+        if (MC.getRenderManager().isDebugBoundingBox()) {
+            GlStateManager.pushMatrix();
+            GlStateManager.disableTexture2D();
+            GlStateManager.disableLighting();
+            AxisAlignedBB bounds = this.blockSystem.getBounds();
+            GlStateManager.translate(0.0, 0.5, 0.0);
+            RenderGlobal.drawBoundingBox(-0.5, -0.5, -0.5, 0.5, 0.5, 0.5, 1.0F, 0.0F, 1.0F, 1.0F);
+            GlStateManager.translate(-0.5, -0.5, -0.5);
+            for (int chunkX = (int) bounds.minX; chunkX < bounds.maxX; chunkX += 16) {
+                for (int chunkZ = (int) bounds.minZ; chunkZ < bounds.maxZ; chunkZ += 16) {
+                    Chunk chunk = this.blockSystem.getChunkFromChunkCoords(chunkX >> 4, chunkZ >> 4);
+                    if (!chunk.isEmpty()) {
+                        RenderGlobal.drawBoundingBox(chunkX, bounds.minY, chunkZ, chunkX + 16, bounds.maxY, chunkZ + 16, 1.0F, 0.0F, 0.0F, 1.0F);
+                    }
+                }
+            }
+            GlStateManager.enableLighting();
+            GlStateManager.enableTexture2D();
+            GlStateManager.popMatrix();
+        }
+
         GlStateManager.translate(-0.5, 0.0, -0.5);
 
         MC.entityRenderer.enableLightmap();

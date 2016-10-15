@@ -20,11 +20,7 @@ public class BlockSystemWorldAccess {
     }
 
     public static Chunk getChunkFromBlock(World world, BlockPos pos) {
-        ThreadLocal<Boolean> access = BlockSystemWorldAccess.getAccess(world);
-        access.set(true);
-        Chunk chunk = world.getChunkFromBlockCoords(pos);
-        access.set(false);
-        return chunk;
+        return BlockSystemWorldAccess.getChunk(world, pos.getX() >> 4, pos.getZ() >> 4);
     }
 
     public static IBlockState getBlockState(World world, BlockPos pos) {

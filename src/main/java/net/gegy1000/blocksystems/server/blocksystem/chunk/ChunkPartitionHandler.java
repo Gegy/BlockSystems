@@ -32,11 +32,10 @@ public class ChunkPartitionHandler {
         if (z > size - 1) {
             z = size - 1;
         }
-        int y = random.nextInt(16);
         if (random.nextBoolean()) {
-            return new BlockPos(x, y, z);
+            return new BlockPos(x, 0, z);
         } else {
-            return new BlockPos(z, y, x);
+            return new BlockPos(z, 0, x);
         }
     }
 }

@@ -77,7 +77,7 @@ public abstract class BlockSystem extends World {
 
     protected int id;
 
-    protected AxisAlignedBB bounds = new AxisAlignedBB(-64, -64, -64, 64, 64, 64);
+    protected AxisAlignedBB bounds = new AxisAlignedBB(-64, 0, -64, 64, 128, 64);
 
     protected Map<ChunkPos, BlockSystemChunk> savedChunks = new HashMap<>();
 
@@ -353,8 +353,6 @@ public abstract class BlockSystem extends World {
 
     @Override
     public void tick() {
-        this.setBlockState(BlockPos.ORIGIN, Blocks.STONE.getDefaultState(), 3);
-
         this.prevPosX = this.posX;
         this.prevPosY = this.posY;
         this.prevPosZ = this.posZ;
@@ -563,7 +561,7 @@ public abstract class BlockSystem extends World {
     }
 
     public boolean isValid(BlockPos pos) {
-        return this.bounds.isVecInside(new Vec3d(pos.getX(), pos.getY(), pos.getZ()));
+        return this.bounds.expandXyz(1).isVecInside(new Vec3d(pos.getX(), pos.getY(), pos.getZ()));
     }
 
     public boolean isRemoved() {
@@ -583,5 +581,9 @@ public abstract class BlockSystem extends World {
         this.rotationY = rotationY;
         this.rotationZ = rotationZ;
         this.recalculateMatrices();
+    }
+
+    public AxisAlignedBB getBounds() {
+        return this.bounds;
     }
 }

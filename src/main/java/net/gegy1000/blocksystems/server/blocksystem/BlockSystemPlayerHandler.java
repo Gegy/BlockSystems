@@ -167,8 +167,15 @@ public class BlockSystemPlayerHandler {
                     this.player.swingArm(hand);
                     return true;
                 } else if (heldItem != null) {
+                    float rotationYaw = this.player.rotationYaw;
+                    float rotationPitch = this.player.rotationPitch;
+                    Vec3d actualRotation = this.blockSystem.getTransformedVector(new Vec3d(rotationPitch, rotationYaw, 0.0F));
+                    this.player.rotationPitch = (float) actualRotation.xCoord;
+                    this.player.rotationYaw = (float) actualRotation.yCoord;
                     int size = heldItem.stackSize;
                     EnumActionResult actionResult = heldItem.onItemUse(this.player, this.blockSystem, pos, hand, this.mouseOver.sideHit, hitX, hitY, hitZ);
+                    this.player.rotationPitch = rotationPitch;
+                    this.player.rotationYaw = rotationYaw;
                     if (actionResult == EnumActionResult.SUCCESS) {
                         this.player.swingArm(hand);
                     }
