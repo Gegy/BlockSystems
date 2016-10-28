@@ -131,6 +131,8 @@ public class BlockSystemRenderer implements IWorldEventListener {
         GlStateManager.rotate(rotationY, 0.0F, 1.0F, 0.0F);
         GlStateManager.rotate(rotationX, 1.0F, 0.0F, 0.0F);
         GlStateManager.rotate(rotationZ, 0.0F, 0.0F, 1.0F);
+        GlStateManager.enableBlend();
+        GlStateManager.enableCull();
 
         if (MC.getRenderManager().isDebugBoundingBox()) {
             GlStateManager.pushMatrix();
@@ -144,7 +146,7 @@ public class BlockSystemRenderer implements IWorldEventListener {
                 for (int chunkZ = (int) bounds.minZ; chunkZ < bounds.maxZ; chunkZ += 16) {
                     Chunk chunk = this.blockSystem.getChunkFromChunkCoords(chunkX >> 4, chunkZ >> 4);
                     if (!chunk.isEmpty()) {
-                        RenderGlobal.drawBoundingBox(chunkX, bounds.minY, chunkZ, chunkX + 16, bounds.maxY, chunkZ + 16, 1.0F, 0.0F, 0.0F, 1.0F);
+                        RenderGlobal.drawBoundingBox(chunkX, bounds.minY, chunkZ, chunkX + 16, Math.min(bounds.maxY, chunk.getTopFilledSegment() + 1 << 4), chunkZ + 16, 1.0F, 0.0F, 0.0F, 1.0F);
                     }
                 }
             }
@@ -392,6 +394,9 @@ public class BlockSystemRenderer implements IWorldEventListener {
             if (this.viewFrustum != null) {
                 this.viewFrustum.delete();
             }
+            this.displayListEntitiesDirty = true;
+            this.chunkRenderInformation.clear();
+            this.queuedChunkUpdates.clear();
             this.viewFrustum = new BlockSystemViewFrustum(this, this.blockSystem, viewDistance, vbos ? BlockSystemRenderChunk::new : ListedBlockSystemRenderChunk::new);
             this.viewFrustum.updateChunkPositions(untransformed.x, untransformed.z);
         }

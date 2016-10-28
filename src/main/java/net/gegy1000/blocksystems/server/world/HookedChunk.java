@@ -12,6 +12,9 @@ import net.minecraft.world.EnumSkyBlock;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.ChunkPrimer;
+import net.minecraft.world.chunk.IChunkGenerator;
+import net.minecraft.world.chunk.IChunkProvider;
+import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
@@ -144,5 +147,17 @@ public class HookedChunk extends Chunk {
     @Override
     public boolean needsSaving(boolean needsModified) {
         return false;
+    }
+
+    @Override
+    protected void populateChunk(IChunkGenerator generator) {
+    }
+
+    @Override
+    public void setStorageArrays(ExtendedBlockStorage[] storage) {
+    }
+
+    @Override
+    public void populateChunk(IChunkProvider chunkProvider, IChunkGenerator generator) {
     }
 }
