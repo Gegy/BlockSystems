@@ -8,6 +8,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
+import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 
 import javax.vecmath.Point3d;
 import java.util.HashMap;
@@ -52,10 +53,24 @@ public class BlockSystemHooks {
         return outsideWorldHeight || (partitionSpace && !BlockSystemWorldAccess.canAccess(world) && !(world instanceof BlockSystem));
     }
 
+    public static boolean checkChunkAccess(World world, int x, int z, boolean override) {
+        boolean partitionSpace = x <= -1875000 || x > 1874999 || z <= -1875000 || z > 1874999;
+        return partitionSpace && (!BlockSystemWorldAccess.canAccess(world) || override) && !(world instanceof BlockSystem);
+    }
+
     public static Chunk getChunk(World world, int x, int z) {
         if (BlockSystemHooks.checkBlockAccess(world, new BlockPos(x << 4, 0, z << 4))) {
             return HOOKED_CHUNKS.get(world);
         }
         return world.getChunkProvider().provideChunk(x, z);
+    }
+
+    public static void initChunkPrimer(World world, Chunk chunk, int x, int z) {
+        if (BlockSystemHooks.checkChunkAccess(world, x, z, true)) {
+            ExtendedBlockStorage[] storage = chunk.getBlockStorageArray();
+            for (int i = 0; i < storage.length; i++) {
+                storage[i] = Chunk.NULL_BLOCK_STORAGE;
+            }
+        }
     }
 }

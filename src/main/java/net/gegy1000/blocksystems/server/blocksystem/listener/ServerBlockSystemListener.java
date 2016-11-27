@@ -7,6 +7,7 @@ import net.gegy1000.blocksystems.server.message.blocksystem.PlayEventMessage;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.network.play.server.SPacketSoundEffect;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.SoundCategory;
 import net.minecraft.util.SoundEvent;
@@ -41,6 +42,8 @@ public class ServerBlockSystemListener implements IWorldEventListener {
 
     @Override
     public void playSoundToAllNearExcept(EntityPlayer player, SoundEvent sound, SoundCategory category, double x, double y, double z, float volume, float pitch) {
+        double range = volume > 1.0F ? 16.0F * volume : 16.0;
+        this.server.getPlayerList().sendToAllNearExcept(player, x, y, z, range, this.blockSystem.provider.getDimension(), new SPacketSoundEffect(sound, category, x, y, z, volume, pitch));
     }
 
     @Override

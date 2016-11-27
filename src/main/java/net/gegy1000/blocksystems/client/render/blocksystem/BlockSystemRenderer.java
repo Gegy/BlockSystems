@@ -162,13 +162,13 @@ public class BlockSystemRenderer implements IWorldEventListener {
         GlStateManager.matrixMode(GL11.GL_MODELVIEW);
         GlStateManager.shadeModel(GL11.GL_SMOOTH);
         GlStateManager.pushMatrix();
-        GlStateManager.disableAlpha();
         this.renderBlockLayer(BlockRenderLayer.SOLID, untransformed);
         GlStateManager.enableAlpha();
         this.renderBlockLayer(BlockRenderLayer.CUTOUT_MIPPED, untransformed);
         MC.getTextureManager().getTexture(TextureMap.LOCATION_BLOCKS_TEXTURE).setBlurMipmap(false, false);
         this.renderBlockLayer(BlockRenderLayer.CUTOUT, untransformed);
         MC.getTextureManager().getTexture(TextureMap.LOCATION_BLOCKS_TEXTURE).restoreLastBlurMipmap();
+        this.renderBlockLayer(BlockRenderLayer.TRANSLUCENT, untransformed);
         GlStateManager.popMatrix();
 
         MC.entityRenderer.disableLightmap();

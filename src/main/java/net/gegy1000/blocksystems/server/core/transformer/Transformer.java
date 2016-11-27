@@ -123,11 +123,19 @@ public abstract class Transformer implements Opcodes {
         } else if (cls instanceof Class) {
             name = ((Class) cls).getName();
         }
+        boolean array = name.endsWith("[]");
+        if (array) {
+            name = name.substring(0, name.length() - 2);
+        }
         String primitive = PRIMITIVES.get(name);
         if (primitive != null) {
             return primitive;
         } else {
-            return "L" + name.replace(".", "/") + ";";
+            String descriptor = "L" + name.replace(".", "/") + ";";
+            if (array) {
+                descriptor = "[" + descriptor;
+            }
+            return descriptor;
         }
     }
 

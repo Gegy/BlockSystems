@@ -11,6 +11,7 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
+import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 
 public class BlockSystemChunk extends Chunk {
     protected BlockSystem blockSystem;
@@ -89,10 +90,14 @@ public class BlockSystemChunk extends Chunk {
         if (this.partitionPosition != null) {
             Chunk chunk = BlockSystemWorldAccess.getChunk(this.mainWorld, this.partitionPosition.getX(), this.partitionPosition.getZ());
             BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+            ThreadLocal<Boolean> access = BlockSystemWorldAccess.getAccess(this.mainWorld);
+            access.set(true);
+            ExtendedBlockStorage[] storages = chunk.getBlockStorageArray();
             for (int y = 0; y < 16; y++) {
                 chunk.setBlockState(pos, Blocks.AIR.getDefaultState());
-                chunk.getBlockStorageArray()[y] = NULL_BLOCK_STORAGE;
+                storages[y] = NULL_BLOCK_STORAGE;
             }
+            access.set(false);
         }
     }
 

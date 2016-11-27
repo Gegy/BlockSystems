@@ -1,6 +1,7 @@
 package net.gegy1000.blocksystems.server.core;
 
 import net.gegy1000.blocksystems.server.core.transformer.Transformer;
+import net.gegy1000.blocksystems.server.transformer.ChunkTransformer;
 import net.gegy1000.blocksystems.server.transformer.EntityTransformer;
 import net.gegy1000.blocksystems.server.transformer.ParticleManagerTransformer;
 import net.gegy1000.blocksystems.server.transformer.WorldTransformer;
@@ -85,6 +86,7 @@ public class BlockSystemTransformer implements IClassTransformer {
         this.transformers.add(new EntityTransformer());
         this.transformers.add(new EntityListTransformer());
         this.transformers.add(new WorldTransformer());
+        this.transformers.add(new ChunkTransformer());
     }
 
     private void saveBytecode(String name, ClassWriter classWriter) {
