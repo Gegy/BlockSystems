@@ -54,7 +54,7 @@ public class BlockSystemHooks {
 
     public static boolean checkBlockAccess(World world, BlockPos pos) {
         boolean outsideWorldHeight = pos.getY() < 0 || pos.getY() >= 256;
-        boolean partitionSpace = pos.getX() <= -30000000 || pos.getX() > 29999984 || pos.getZ() <= -30000000 || pos.getZ() > 29999984;
+        boolean partitionSpace = pos.getX() <= -29999999 || pos.getX() >= 29999984 || pos.getZ() <= -29999999 || pos.getZ() >= 29999984;
         return outsideWorldHeight || (partitionSpace && !BlockSystemWorldAccess.canAccess(world) && !(world instanceof BlockSystem));
     }
 
