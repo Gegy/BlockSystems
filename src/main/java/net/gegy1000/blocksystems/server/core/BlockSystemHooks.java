@@ -1,10 +1,15 @@
 package net.gegy1000.blocksystems.server.core;
 
+import net.gegy1000.blocksystems.BlockSystems;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
+import net.gegy1000.blocksystems.server.blocksystem.ServerBlockSystemHandler;
 import net.gegy1000.blocksystems.server.world.BlockSystemWorldAccess;
 import net.gegy1000.blocksystems.server.world.HookedChunk;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.particle.Particle;
+import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
@@ -70,6 +75,23 @@ public class BlockSystemHooks {
             ExtendedBlockStorage[] storage = chunk.getBlockStorageArray();
             for (int i = 0; i < storage.length; i++) {
                 storage[i] = Chunk.NULL_BLOCK_STORAGE;
+            }
+        }
+    }
+
+    public static void getMouseOver() {
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.objectMouseOver != null && mc.thePlayer != null) {
+            Vec3d eyePos = mc.thePlayer.getPositionEyes(1.0F);
+            ServerBlockSystemHandler handler = BlockSystems.PROXY.getBlockSystemHandler(mc.theWorld);
+            BlockSystem blockSystem = handler.getMousedOver(mc.thePlayer);
+            if (blockSystem != null) {
+                RayTraceResult mousedOver = handler.getMousedOverResult(mc.thePlayer);
+                double length = mc.objectMouseOver.hitVec.subtract(eyePos).lengthSquared();
+                Vec3d blockSystemEyePos = blockSystem.getUntransformedPosition(eyePos);
+                if (mousedOver.hitVec.subtract(blockSystemEyePos).lengthSquared() < length) {
+                    mc.objectMouseOver = new RayTraceResult(RayTraceResult.Type.MISS, blockSystemEyePos, EnumFacing.DOWN, mousedOver.getBlockPos());
+                }
             }
         }
     }

@@ -2,13 +2,13 @@ package net.gegy1000.blocksystems.client.blocksystem;
 
 import net.gegy1000.blocksystems.client.render.blocksystem.BlockSystemRenderHandler;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
+import net.gegy1000.blocksystems.server.blocksystem.BlockSystemPlayerHandler;
+import net.gegy1000.blocksystems.server.blocksystem.ServerBlockSystemHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.world.World;
-import net.gegy1000.blocksystems.server.blocksystem.ServerBlockSystemHandler;
-import net.gegy1000.blocksystems.server.blocksystem.BlockSystemPlayerHandler;
 
 import java.util.Map;
 
@@ -16,6 +16,7 @@ public class ClientBlockSystemHandler extends ServerBlockSystemHandler {
     private static final Minecraft MINECRAFT = Minecraft.getMinecraft();
 
     private BlockSystem mousedOver;
+    private RayTraceResult mousedOverResult;
 
     public ClientBlockSystemHandler(World world) {
         super(world);
@@ -28,7 +29,7 @@ public class ClientBlockSystemHandler extends ServerBlockSystemHandler {
         EntityPlayerSP clientPlayer = MINECRAFT.thePlayer;
 
         if (clientPlayer != null) {
-            Map.Entry<BlockSystem, RayTraceResult> mouseOver = this.getSelectedBlock(clientPlayer);
+            Map.Entry<BlockSystem, RayTraceResult> mouseOver = this.getSelectedBlock(clientPlayer, MINECRAFT.objectMouseOver);
 
             BlockSystem currentMousedOver = mouseOver != null ? mouseOver.getKey() : null;
 
@@ -52,13 +53,12 @@ public class ClientBlockSystemHandler extends ServerBlockSystemHandler {
             }
 
             this.mousedOver = currentMousedOver;
+            this.mousedOverResult = mouseOver != null ? mouseOver.getValue() : null;
 
             if (this.mousedOver != null && !MINECRAFT.gameSettings.keyBindAttack.isKeyDown()) {
-                if (this.mousedOver != null) {
-                    BlockSystemPlayerHandler mouseOverHandler = this.get(this.mousedOver, clientPlayer);
-                    if (mouseOverHandler != null) {
-                        mouseOverHandler.startBreaking(null);
-                    }
+                BlockSystemPlayerHandler mouseOverHandler = this.get(this.mousedOver, clientPlayer);
+                if (mouseOverHandler != null) {
+                    mouseOverHandler.startBreaking(null);
                 }
             }
 
@@ -77,6 +77,11 @@ public class ClientBlockSystemHandler extends ServerBlockSystemHandler {
     }
 
     @Override
+    public RayTraceResult getMousedOverResult(EntityPlayer player) {
+        return this.mousedOverResult;
+    }
+
+    @Override
     public void addBlockSystem(BlockSystem blockSystem) {
         super.addBlockSystem(blockSystem);
         BlockSystemRenderHandler.addBlockSystem(blockSystem);
@@ -90,6 +95,12 @@ public class ClientBlockSystemHandler extends ServerBlockSystemHandler {
             BlockSystemRenderHandler.removeBlockSystem(blockSystem);
         }
         super.removeBlockSystem(id);
+    }
+
+    @Override
+    public void removeBlockSystem(BlockSystem blockSystem) {
+        super.removeBlockSystem(blockSystem);
+        BlockSystemRenderHandler.removeBlockSystem(blockSystem);
     }
 
     @Override

@@ -124,7 +124,6 @@ public class BlockSystemRenderer implements IWorldEventListener {
 
         this.setup(viewEntity, partialTicks, untransformed);
         this.updateChunks(finishTimeNano);
-
         MC.getTextureManager().bindTexture(TextureMap.LOCATION_BLOCKS_TEXTURE);
         GlStateManager.pushMatrix();
         GlStateManager.translate(x, y, z);
@@ -138,7 +137,7 @@ public class BlockSystemRenderer implements IWorldEventListener {
             GlStateManager.pushMatrix();
             GlStateManager.disableTexture2D();
             GlStateManager.disableLighting();
-            AxisAlignedBB bounds = this.blockSystem.getBounds();
+            AxisAlignedBB bounds = this.blockSystem.getMaximumBounds();
             GlStateManager.translate(0.0, 0.5, 0.0);
             RenderGlobal.drawBoundingBox(-0.5, -0.5, -0.5, 0.5, 0.5, 0.5, 1.0F, 0.0F, 1.0F, 1.0F);
             GlStateManager.translate(-0.5, -0.5, -0.5);
@@ -284,8 +283,6 @@ public class BlockSystemRenderer implements IWorldEventListener {
     }
 
     private void setup(Entity viewEntity, float partialTicks, Point3d untransformed) {
-        boolean playerSpectator = viewEntity instanceof EntityPlayer && ((EntityPlayer) viewEntity).isSpectator();
-
         int frameCount = this.frameCount++;
 
         int viewDistance = MC.gameSettings.renderDistanceChunks;
@@ -511,8 +508,6 @@ public class BlockSystemRenderer implements IWorldEventListener {
 
     public void delete() {
         this.viewFrustum.delete();
-        this.renderDispatcher.stopChunkUpdates();
-        this.renderDispatcher.stopWorkerThreads();
     }
 
     public void updateTileEntities(Set<TileEntity> remove, Set<TileEntity> add) {

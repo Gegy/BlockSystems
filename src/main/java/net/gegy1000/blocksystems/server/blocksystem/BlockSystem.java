@@ -6,6 +6,7 @@ import net.gegy1000.blocksystems.BlockSystems;
 import net.gegy1000.blocksystems.server.blocksystem.chunk.BlockSystemChunk;
 import net.gegy1000.blocksystems.server.entity.BlockSystemControlEntity;
 import net.gegy1000.blocksystems.server.util.Matrix;
+import net.gegy1000.blocksystems.server.util.RotatedAABB;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
@@ -77,7 +78,8 @@ public abstract class BlockSystem extends World {
 
     protected int id;
 
-    protected AxisAlignedBB bounds = new AxisAlignedBB(-64, 0, -64, 64, 128, 64);
+    protected AxisAlignedBB maximumBounds = new AxisAlignedBB(-64, 0, -64, 64, 128, 64);
+    protected RotatedAABB rotatedBounds = new RotatedAABB(-64, 0, -64, 64, 128, 64);
 
     protected Map<ChunkPos, BlockSystemChunk> savedChunks = new HashMap<>();
 
@@ -110,6 +112,8 @@ public abstract class BlockSystem extends World {
         this.untransformMatrix.setIdentity();
         this.untransformMatrix.multiply(this.transformMatrix);
         this.untransformMatrix.invert();
+
+        this.rotatedBounds.move(this.posX, this.posY, this.posZ, this.rotationX, this.rotationY, this.rotationZ);
     }
 
     public void deserialize(NBTTagCompound compound) {
@@ -360,6 +364,8 @@ public abstract class BlockSystem extends World {
         this.prevRotationY = this.rotationY;
         this.prevRotationZ = this.rotationZ;
 
+        this.rotationY += 1.5F;
+
         super.tick();
 
         if (this.boundEntity != null) {
@@ -554,6 +560,20 @@ public abstract class BlockSystem extends World {
 
     public void removeSavedChunk(ChunkPos pos) {
         this.savedChunks.remove(pos);
+        if (this.savedChunks.size() <= 0 && this.mainWorld.isRemote) {
+            this.remove();
+        } else if (!this.mainWorld.isRemote) {
+            boolean allEmpty = true;
+            for (Map.Entry<ChunkPos, BlockSystemChunk> entry : this.savedChunks.entrySet()) {
+                if (!entry.getValue().isEmpty()) {
+                    allEmpty = false;
+                    break;
+                }
+            }
+            if (allEmpty) {
+                this.remove();
+            }
+        }
     }
 
     public BlockSystemChunk getSavedChunk(ChunkPos pos) {
@@ -561,7 +581,7 @@ public abstract class BlockSystem extends World {
     }
 
     public boolean isValid(BlockPos pos) {
-        return this.bounds.expandXyz(1).isVecInside(new Vec3d(pos.getX(), pos.getY(), pos.getZ()));
+        return this.maximumBounds.expandXyz(1).isVecInside(new Vec3d(pos.getX(), pos.getY(), pos.getZ()));
     }
 
     public boolean isRemoved() {
@@ -569,7 +589,7 @@ public abstract class BlockSystem extends World {
     }
 
     public BlockSystem withBounds(AxisAlignedBB bounds) {
-        this.bounds = bounds;
+        this.maximumBounds = bounds;
         return this;
     }
 
@@ -583,7 +603,15 @@ public abstract class BlockSystem extends World {
         this.recalculateMatrices();
     }
 
-    public AxisAlignedBB getBounds() {
-        return this.bounds;
+    public AxisAlignedBB getMaximumBounds() {
+        return this.maximumBounds;
+    }
+
+    public boolean intersects(AxisAlignedBB bounds) {
+        return this.rotatedBounds.aabb().intersectsWith(bounds);
+    }
+
+    public RotatedAABB getRotatedBounds() {
+        return this.rotatedBounds;
     }
 }

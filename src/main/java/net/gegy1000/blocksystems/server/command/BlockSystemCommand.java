@@ -30,7 +30,7 @@ public class BlockSystemCommand extends CommandBase {
             EntityPlayer player = (EntityPlayer) sender;
             ServerBlockSystemHandler handler = BlockSystems.PROXY.getBlockSystemHandler(world);
             BlockSystem blockSystem = BlockSystems.PROXY.createBlockSystem(world, BlockSystem.nextID++);
-            blockSystem.setPositionAndRotation(player.posX, player.posY, player.posZ, player.rotationPitch, player.rotationYaw, 0.0F);
+            blockSystem.setPositionAndRotation(player.posX, player.posY, player.posZ, player.rotationPitch, 180.0F - player.rotationYaw, 0.0F);
             handler.addBlockSystem(blockSystem);
             blockSystem.setBlockState(BlockPos.ORIGIN, Blocks.GRASS.getDefaultState(), 3);
         }

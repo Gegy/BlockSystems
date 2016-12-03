@@ -55,7 +55,7 @@ public class BlockSystemChunkRenderDispatcher {
         }
         this.renderBuilderCount = builderCount;
         if (threadCount > 1) {
-            for (int k = 0; k < threadCount; ++k) {
+            for (int i = 0; i < threadCount; ++i) {
                 BlockSystemChunkRenderWorker renderWorker = new BlockSystemChunkRenderWorker(this);
                 Thread thread = THREAD_FACTORY.newThread(renderWorker);
                 thread.start();
@@ -143,7 +143,7 @@ public class BlockSystemChunkRenderDispatcher {
             this.runChunkUploads(Long.MAX_VALUE);
             try {
                 queue.add(this.allocateRenderBuilder());
-            } catch (InterruptedException var3) {
+            } catch (InterruptedException e) {
             }
         }
         this.queueFreeRenderBuilders.addAll(queue);

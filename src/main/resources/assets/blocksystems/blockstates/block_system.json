@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "normal": {
+      "model": "blocksystems:block_system"
+    }
+  }
+}

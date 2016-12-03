@@ -46,6 +46,9 @@ public class BlockSystemChunk extends Chunk {
                 int offsetZ = this.partitionPosition.getZ() << 4;
                 BlockSystemWorldAccess.setBlockState(this.mainWorld, new BlockPos((pos.getX() & 15) + offsetX, pos.getY(), (pos.getZ() & 15) + offsetZ), state);
             }
+            if (this.blockCount <= 0) {
+                this.remove();
+            }
         }
         return super.setBlockState(pos, state);
     }

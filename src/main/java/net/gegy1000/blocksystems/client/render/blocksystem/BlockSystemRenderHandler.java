@@ -8,21 +8,21 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 public class BlockSystemRenderHandler {
     public static final BlockSystemChunkRenderDispatcher CHUNK_RENDER_DISPATCHER = new BlockSystemChunkRenderDispatcher();
     private static final Map<BlockSystem, BlockSystemRenderer> RENDERERS = new HashMap<>();
+    private static final Set<BlockSystem> REMOVE = new HashSet<>();
 
     public static void addBlockSystem(BlockSystem blockSystem) {
         RENDERERS.put(blockSystem, new BlockSystemRenderer(blockSystem, CHUNK_RENDER_DISPATCHER));
     }
 
     public static void removeBlockSystem(BlockSystem blockSystem) {
-        BlockSystemRenderer renderer = RENDERERS.remove(blockSystem);
-        if (renderer != null) {
-            renderer.delete();
-        }
+        REMOVE.add(blockSystem);
     }
 
     public static void removeAll() {
@@ -30,6 +30,7 @@ public class BlockSystemRenderHandler {
             entry.getValue().delete();
         }
         RENDERERS.clear();
+        REMOVE.clear();
     }
 
     public static BlockSystemRenderer get(BlockSystem blockSystem) {
@@ -37,6 +38,12 @@ public class BlockSystemRenderHandler {
     }
 
     public static void render(EntityPlayer player, double playerX, double playerY, double playerZ, float partialTicks) {
+        for (BlockSystem blockSystem : REMOVE) {
+            BlockSystemRenderer renderer = RENDERERS.remove(blockSystem);
+            if (renderer != null) {
+                renderer.delete();
+            }
+        }
         GlStateManager.depthMask(true);
         RenderHelper.enableStandardItemLighting();
         GlStateManager.disableBlend();

@@ -53,6 +53,7 @@ public class BlockSystemSavedData extends WorldSavedData {
         this.world = READING_WORLD.get();
         this.partitions.clear();
         this.blockSystems.clear();
+        BlockSystem.nextID = compound.getInteger("NextID");
         try {
             NBTTagList blockSystemsList = compound.getTagList("BlockSystems", Constants.NBT.TAG_COMPOUND);
             for (int i = 0; i < blockSystemsList.tagCount(); i++) {
@@ -64,14 +65,17 @@ public class BlockSystemSavedData extends WorldSavedData {
             }
         } finally {
             List<BlockPos> queuedPartitions = QUEUED_PARTIONS.remove(this.world);
-            for (BlockPos partition : queuedPartitions) {
-                this.addPartition(partition);
+            if (queuedPartitions != null) {
+                for (BlockPos partition : queuedPartitions) {
+                    this.addPartition(partition);
+                }
             }
         }
     }
 
     @Override
     public NBTTagCompound writeToNBT(NBTTagCompound compound) {
+        compound.setInteger("NextID", BlockSystem.nextID);
         NBTTagList blockSystemsList = new NBTTagList();
         for (Map.Entry<Integer, BlockSystem> entry : this.blockSystems.entrySet()) {
             NBTTagCompound tag = entry.getValue().serialize(new NBTTagCompound());

@@ -1,5 +1,7 @@
 package net.gegy1000.blocksystems.server.blocksystem;
 
+import net.gegy1000.blocksystems.server.util.RotatedAABB;
+import net.gegy1000.blocksystems.server.world.data.BlockSystemSavedData;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
@@ -11,7 +13,6 @@ import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import net.minecraftforge.event.ForgeEventFactory;
-import net.gegy1000.blocksystems.server.world.data.BlockSystemSavedData;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -43,7 +44,7 @@ public class ServerBlockSystemHandler {
         if (this.isServer()) {
             this.mouseOver.clear();
             for (EntityPlayer player : this.world.playerEntities) {
-                this.mouseOver.put(player, this.getSelectedBlock(player));
+                this.mouseOver.put(player, this.getSelectedBlock(player, null));
             }
         }
     }
@@ -89,7 +90,7 @@ public class ServerBlockSystemHandler {
         return false;
     }
 
-    public Map.Entry<BlockSystem, RayTraceResult> getSelectedBlock(EntityPlayer player) {
+    public Map.Entry<BlockSystem, RayTraceResult> getSelectedBlock(EntityPlayer player, RayTraceResult defaultResult) {
         float yaw = player.rotationYaw;
         float pitch = player.rotationPitch;
         double x = player.posX;
@@ -106,21 +107,32 @@ public class ServerBlockSystemHandler {
         }
         Vec3d end = start.addVector(deltaX * reach, deltaY * reach, deltaZ * reach);
         Map<BlockSystem, RayTraceResult> results = new HashMap<>();
-        for (Map.Entry<Integer, BlockSystem> blockSystem : this.blockSystems.entrySet()) {
-            RayTraceResult result = blockSystem.getValue().rayTraceBlocks(start, end);
-            if (result != null && result.typeOfHit != RayTraceResult.Type.MISS) {
-                results.put(blockSystem.getValue(), result);
+        for (Map.Entry<Integer, BlockSystem> entry : this.blockSystems.entrySet()) {
+            BlockSystem blockSystem = entry.getValue();
+            RotatedAABB bounds = blockSystem.getRotatedBounds();
+            if (bounds.aabb().intersectsWith(player.getEntityBoundingBox().expandXyz(5.0))) {
+                RayTraceResult result = blockSystem.rayTraceBlocks(start, end);
+                if (result != null && result.typeOfHit != RayTraceResult.Type.MISS) {
+                    results.put(blockSystem, result);
+                }
             }
         }
         if (results.size() > 0) {
             Map.Entry<BlockSystem, RayTraceResult> closest = null;
             double closestDistance = Double.MAX_VALUE;
             for (Map.Entry<BlockSystem, RayTraceResult> entry : results.entrySet()) {
+                BlockSystem blockSystem = entry.getKey();
                 RayTraceResult result = entry.getValue();
-                double distance = result.hitVec.distanceTo(entry.getKey().getTransformedPosition(start));
+                double distance = result.hitVec.distanceTo(blockSystem.getUntransformedPosition(start));
                 if (distance < closestDistance) {
                     closest = entry;
                     closestDistance = distance;
+                }
+            }
+            if (defaultResult != null && defaultResult.typeOfHit != RayTraceResult.Type.MISS) {
+                double distance = defaultResult.hitVec.distanceTo(start);
+                if (distance < closestDistance) {
+                    return null;
                 }
             }
             return closest;
@@ -164,6 +176,11 @@ public class ServerBlockSystemHandler {
     public BlockSystem getMousedOver(EntityPlayer player) {
         Map.Entry<BlockSystem, RayTraceResult> mouseOver = this.mouseOver.get(player);
         return mouseOver != null ? mouseOver.getKey() : null;
+    }
+
+    public RayTraceResult getMousedOverResult(EntityPlayer player) {
+        Map.Entry<BlockSystem, RayTraceResult> mouseOver = this.mouseOver.get(player);
+        return mouseOver != null ? mouseOver.getValue() : null;
     }
 
     public BlockSystemPlayerHandler get(BlockSystem blockSystem, EntityPlayer player) {

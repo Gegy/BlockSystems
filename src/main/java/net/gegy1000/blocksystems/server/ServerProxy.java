@@ -1,5 +1,6 @@
 package net.gegy1000.blocksystems.server;
 
+import net.gegy1000.blocksystems.server.block.BlockRegistry;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystemServer;
 import net.gegy1000.blocksystems.server.blocksystem.ServerBlockSystemHandler;
@@ -23,6 +24,7 @@ public class ServerProxy {
     public static final Map<World, ServerBlockSystemHandler> BLOCK_SYSTEM_HANDLERS = new HashMap<>();
 
     public void onPreInit() {
+        BlockRegistry.onPreInit();
         EntityHandler.onPreInit();
 
         MinecraftForge.EVENT_BUS.register(new ServerEventHandler());

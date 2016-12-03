@@ -169,7 +169,9 @@ public class BlockSystemPlayerHandler {
                 } else if (heldItem != null) {
                     float rotationYaw = this.player.rotationYaw;
                     float rotationPitch = this.player.rotationPitch;
-                    Vec3d actualRotation = this.blockSystem.getTransformedVector(new Vec3d(rotationPitch, rotationYaw, 0.0F));
+                    Vec3d vec = new Vec3d(rotationPitch, rotationYaw, 0.0F);
+                    vec.normalize();
+                    Vec3d actualRotation = this.blockSystem.getTransformedVector(vec);
                     this.player.rotationPitch = (float) actualRotation.xCoord;
                     this.player.rotationYaw = (float) actualRotation.yCoord;
                     int size = heldItem.stackSize;
