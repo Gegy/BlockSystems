@@ -63,7 +63,7 @@ String getModFile() {
 jar {
     manifest {
         attributes "FMLAT": "blocksystems_at.cfg"
-        attributes "FMLCorePlugin": "net.gegy1000.blocksystems.server.core.BlockSystemsPlugin"
+        attributes "FMLCorePlugin": "net.gegy1000.blocksystems.server.core.BlockSystemPlugin"
         attributes "FMLCorePluginContainsFMLMod": "true"
     }
 }
@@ -73,7 +73,7 @@ task devJar(type: Jar) {
     from sourceSets.main.output
     manifest {
         attributes "FMLAT": "blocksystems_at.cfg"
-        attributes "FMLCorePlugin": "net.gegy1000.blocksystems.server.core.BlockSystemsPlugin"
+        attributes "FMLCorePlugin": "net.gegy1000.blocksystems.server.core.BlockSystemPlugin"
         attributes "FMLCorePluginContainsFMLMod": "true"
     }
 }

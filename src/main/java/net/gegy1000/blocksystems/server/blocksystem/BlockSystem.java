@@ -581,7 +581,7 @@ public abstract class BlockSystem extends World {
     }
 
     public boolean isValid(BlockPos pos) {
-        return this.maximumBounds.expandXyz(1).isVecInside(new Vec3d(pos.getX(), pos.getY(), pos.getZ()));
+        return this.maximumBounds.expandXyz(1).isVecInside(new Vec3d(pos.getX(), pos.getY(), pos.getZ())) && pos.getY() >= 0 && pos.getY() < 256;
     }
 
     public boolean isRemoved() {

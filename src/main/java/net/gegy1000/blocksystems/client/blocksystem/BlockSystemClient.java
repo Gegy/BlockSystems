@@ -1,5 +1,6 @@
 package net.gegy1000.blocksystems.client.blocksystem;
 
+import net.gegy1000.blocksystems.client.blocksystem.chunk.EmptyBlockSystemChunk;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.PositionedSoundRecord;
@@ -11,7 +12,10 @@ import net.minecraft.util.SoundEvent;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.EnumSkyBlock;
 import net.minecraft.world.World;
+import net.minecraft.world.WorldType;
+import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.IChunkProvider;
+import net.minecraftforge.common.util.BlockSnapshot;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 import net.gegy1000.blocksystems.client.blocksystem.listener.ClientBlockSystemListener;
@@ -70,6 +74,45 @@ public class BlockSystemClient extends BlockSystem {
     public void playSound(EntityPlayer player, double x, double y, double z, SoundEvent sound, SoundCategory category, float volume, float pitch) {
         if (this.mc.getRenderViewEntity() == player) {
             this.playSound(x, y, z, sound, category, volume, pitch, false);
+        }
+    }
+
+    @Override
+    public boolean setBlockState(BlockPos pos, IBlockState newState, int flags) {
+        if (!this.isValid(pos)) {
+            return false;
+        } else if (!this.isRemote && this.worldInfo.getTerrainType() == WorldType.DEBUG_WORLD) {
+            return false;
+        } else {
+            Chunk chunk = this.getChunkFromBlockCoords(pos);
+            if (chunk instanceof EmptyBlockSystemChunk) {
+                chunk = this.chunkProviderClient.loadChunk(pos.getX() >> 4, pos.getZ() >> 4);
+            }
+            BlockSnapshot snapshot = null;
+            if (this.captureBlockSnapshots && !this.isRemote) {
+                snapshot = BlockSnapshot.getBlockSnapshot(this, pos, flags);
+                this.capturedBlockSnapshots.add(snapshot);
+            }
+            IBlockState oldState = this.getBlockState(pos);
+            int oldLight = oldState.getLightValue(this, pos);
+            int oldOpacity = oldState.getLightOpacity(this, pos);
+            IBlockState state = chunk.setBlockState(pos, newState);
+            if (state == null) {
+                if (snapshot != null) {
+                    this.capturedBlockSnapshots.remove(snapshot);
+                }
+                return false;
+            } else {
+                if (newState.getLightOpacity(this, pos) != oldOpacity || newState.getLightValue(this, pos) != oldLight) {
+                    this.theProfiler.startSection("checkLight");
+                    this.checkLight(pos);
+                    this.theProfiler.endSection();
+                }
+                if (snapshot == null) {
+                    this.markAndNotifyBlock(pos, chunk, state, newState, flags);
+                }
+                return true;
+            }
         }
     }
 
