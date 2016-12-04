@@ -69,7 +69,7 @@ public class BlockSystemChunkRenderWorker implements Runnable {
                 }
                 return;
             }
-            EntityPlayer player = Minecraft.getMinecraft().thePlayer;
+            EntityPlayer player = Minecraft.getMinecraft().player;
             Point3d playerPos = generator.getChunk().getBlockSystem().getUntransformedPosition(new Point3d(player.posX, player.posY, player.posZ));
             BlockPos chunkPosition = generator.getChunk().getPosition();
             if (chunkPosition.add(8, 8, 8).distanceSq(new Vec3i(playerPos.getX(), playerPos.getY(), playerPos.getZ())) > 576.0D) {

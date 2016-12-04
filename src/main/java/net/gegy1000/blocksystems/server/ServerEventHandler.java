@@ -52,7 +52,7 @@ public class ServerEventHandler {
     @SubscribeEvent
     public void onLivingDeath(LivingDeathEvent event) {
         Entity entity = event.getEntity();
-        World world = entity.worldObj;
+        World world = entity.world;
         if (entity instanceof EntityPlayer) {
             EntityPlayer player = (EntityPlayer) entity;
             if (world instanceof WorldServer && player instanceof EntityPlayerMP) {

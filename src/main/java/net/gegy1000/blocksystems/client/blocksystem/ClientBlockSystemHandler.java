@@ -26,7 +26,7 @@ public class ClientBlockSystemHandler extends ServerBlockSystemHandler {
     public void update() {
         super.update();
 
-        EntityPlayerSP clientPlayer = MINECRAFT.thePlayer;
+        EntityPlayerSP clientPlayer = MINECRAFT.player;
 
         if (clientPlayer != null) {
             Map.Entry<BlockSystem, RayTraceResult> mouseOver = this.getSelectedBlock(clientPlayer, MINECRAFT.objectMouseOver);
@@ -85,7 +85,7 @@ public class ClientBlockSystemHandler extends ServerBlockSystemHandler {
     public void addBlockSystem(BlockSystem blockSystem) {
         super.addBlockSystem(blockSystem);
         BlockSystemRenderHandler.addBlockSystem(blockSystem);
-        blockSystem.addPlayerHandler(MINECRAFT.thePlayer);
+        blockSystem.addPlayerHandler(MINECRAFT.player);
     }
 
     @Override

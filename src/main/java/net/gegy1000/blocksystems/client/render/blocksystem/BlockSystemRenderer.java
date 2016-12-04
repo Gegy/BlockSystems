@@ -115,7 +115,7 @@ public class BlockSystemRenderer implements IWorldEventListener {
         this.renderDispatcher = renderDispatcher;
         this.viewDistance = -1;
         this.chunkContainer = new VBORenderChunkContainer();
-        this.updateFrustrum(this.getUntransformedPosition(MC.thePlayer), MC.gameSettings.renderDistanceChunks, OpenGlHelper.useVbo());
+        this.updateFrustrum(this.getUntransformedPosition(MC.player), MC.gameSettings.renderDistanceChunks, OpenGlHelper.useVbo());
         blockSystem.addEventListener(this);
     }
 
@@ -234,7 +234,7 @@ public class BlockSystemRenderer implements IWorldEventListener {
         RenderHelper.enableStandardItemLighting();
         ServerBlockSystemHandler structureHandler = BlockSystems.PROXY.getBlockSystemHandler(this.blockSystem.getMainWorld());
         if (viewEntity instanceof EntityPlayer && structureHandler.getMousedOver((EntityPlayer) viewEntity) == this.blockSystem) {
-            BlockSystemPlayerHandler handler = structureHandler.get(this.blockSystem, MC.thePlayer);
+            BlockSystemPlayerHandler handler = structureHandler.get(this.blockSystem, MC.player);
             if (handler != null) {
                 RayTraceResult result = handler.getMouseOver();
                 BlockPos pos = result.getBlockPos();
@@ -317,7 +317,7 @@ public class BlockSystemRenderer implements IWorldEventListener {
 
         BlockPos eyePosition = new BlockPos(viewRenderX, viewRenderY + viewEntity.getEyeHeight(), viewRenderZ);
         BlockSystemRenderChunk eyeChunk = this.viewFrustum.getChunk(eyePosition);
-        BlockPos viewChunkCorner = new BlockPos(MathHelper.floor_double(viewRenderX / 16.0D) * 16, MathHelper.floor_double(viewRenderY / 16.0D) * 16, MathHelper.floor_double(viewRenderZ / 16.0D) * 16);
+        BlockPos viewChunkCorner = new BlockPos(MathHelper.floor(viewRenderX / 16.0D) * 16, MathHelper.floor(viewRenderY / 16.0D) * 16, MathHelper.floor(viewRenderZ / 16.0D) * 16);
         this.displayListEntitiesDirty = this.displayListEntitiesDirty || !this.queuedChunkUpdates.isEmpty() || untransformed.x != this.lastViewEntityX || untransformed.y != this.lastViewEntityY || untransformed.z != this.lastViewEntityZ || (double) viewEntity.rotationPitch != this.lastViewEntityPitch || (double) viewEntity.rotationYaw != this.lastViewEntityYaw;
         this.lastViewEntityX = untransformed.x;
         this.lastViewEntityY = untransformed.y;
@@ -328,7 +328,7 @@ public class BlockSystemRenderer implements IWorldEventListener {
             this.displayListEntitiesDirty = false;
             this.chunkRenderInformation = Lists.newArrayList();
             Queue<ChunkRenderInformation> queue = Queues.newArrayDeque();
-            Entity.setRenderDistanceWeight(MathHelper.clamp_double(this.viewDistance / 8.0D, 1.0D, 2.5D));
+            Entity.setRenderDistanceWeight(MathHelper.clamp(this.viewDistance / 8.0D, 1.0D, 2.5D));
             boolean renderChunksMany = MC.renderChunksMany;
             if (eyeChunk != null) {
                 ChunkRenderInformation chunkInformation = new ChunkRenderInformation(eyeChunk, null, 0);
@@ -531,7 +531,7 @@ public class BlockSystemRenderer implements IWorldEventListener {
 
     private BlockSystemRenderChunk getOffsetChunk(BlockPos pos, BlockSystemRenderChunk chunk, EnumFacing facing) {
         BlockPos offset = chunk.getOffset(facing);
-        if (!(MathHelper.abs_int(pos.getX() - offset.getX()) > this.viewDistance * 16) && offset.getY() >= 0 && offset.getY() < 256) {
+        if (!(MathHelper.abs(pos.getX() - offset.getX()) > this.viewDistance * 16) && offset.getY() >= 0 && offset.getY() < 256) {
             return this.viewFrustum.getChunk(offset);
         } else {
             return null;

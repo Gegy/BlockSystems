@@ -46,8 +46,8 @@ public class BlockSystemClient extends BlockSystem {
     @Override
     public void tick() {
         super.tick();
-        this.chunkProviderClient.unloadQueuedChunks();
-        EntityPlayerSP player = this.mc.thePlayer;
+        this.chunkProviderClient.tick();
+        EntityPlayerSP player = this.mc.player;
         if (player != null) {
             Point3d untransformedPosition = this.getUntransformedPosition(new Point3d(player.posX, player.posY, player.posZ));
             this.runDisplayTicks((int) untransformedPosition.x, (int) untransformedPosition.y, (int) untransformedPosition.z);

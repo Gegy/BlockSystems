@@ -183,7 +183,7 @@ public class BlockSystemChunkTracker {
     }
 
     public void addPlayer(EntityPlayerMP player) {
-        BlockSystemPlayerHandler handler = BlockSystems.PROXY.getBlockSystemHandler(player.worldObj).get(this.blockSystem, player);
+        BlockSystemPlayerHandler handler = BlockSystems.PROXY.getBlockSystemHandler(player.world).get(this.blockSystem, player);
         Point3d playerPosition = this.getUntransformedPosition(player);
         int playerChunkX = (int) playerPosition.getX() >> 4;
         int playerChunkZ = (int) playerPosition.getZ() >> 4;
@@ -199,7 +199,7 @@ public class BlockSystemChunkTracker {
     }
 
     public void removePlayer(EntityPlayerMP player) {
-        BlockSystemPlayerHandler handler = BlockSystems.PROXY.getBlockSystemHandler(player.worldObj).get(this.blockSystem, player);
+        BlockSystemPlayerHandler handler = BlockSystems.PROXY.getBlockSystemHandler(player.world).get(this.blockSystem, player);
         int managedChunkX = (int) handler.getManagedPosX() >> 4;
         int managedChunkZ = (int) handler.getManagedPosZ() >> 4;
         for (int chunkX = managedChunkX - this.playerViewRadius; chunkX <= managedChunkX + this.playerViewRadius; ++chunkX) {
@@ -221,7 +221,7 @@ public class BlockSystemChunkTracker {
     }
 
     public void updateMountedMovingPlayer(EntityPlayerMP player) {
-        BlockSystemPlayerHandler handler = BlockSystems.PROXY.getBlockSystemHandler(player.worldObj).get(this.blockSystem, player);
+        BlockSystemPlayerHandler handler = BlockSystems.PROXY.getBlockSystemHandler(player.world).get(this.blockSystem, player);
         Point3d playerPosition = this.getUntransformedPosition(player);
         int playerChunkX = (int) playerPosition.getX() >> 4;
         int playerChunkZ = (int) playerPosition.getZ() >> 4;
@@ -263,7 +263,7 @@ public class BlockSystemChunkTracker {
     }
 
     public void setPlayerViewRadius(int radius) {
-        radius = MathHelper.clamp_int(radius, 3, 32);
+        radius = MathHelper.clamp(radius, 3, 32);
         if (radius != this.playerViewRadius) {
             int deltaRadius = radius - this.playerViewRadius;
             for (EntityPlayerMP player : Lists.newArrayList(this.players)) {

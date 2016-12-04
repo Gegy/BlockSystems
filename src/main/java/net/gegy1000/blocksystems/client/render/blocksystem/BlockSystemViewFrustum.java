@@ -56,8 +56,8 @@ public class BlockSystemViewFrustum {
     }
 
     public void updateChunkPositions(double viewEntityX, double viewEntityZ) {
-        int baseX = MathHelper.floor_double(viewEntityX) - 8;
-        int baseZ = MathHelper.floor_double(viewEntityZ) - 8;
+        int baseX = MathHelper.floor(viewEntityX) - 8;
+        int baseZ = MathHelper.floor(viewEntityZ) - 8;
         int blockRangeX = this.chunkRangeX * 16;
         for (int chunkX = 0; chunkX < this.chunkRangeX; ++chunkX) {
             int x = this.getBaseCoordinate(baseX, blockRangeX, chunkX);
@@ -82,12 +82,12 @@ public class BlockSystemViewFrustum {
     }
 
     public void queueRenderUpdate(int minX, int minY, int minZ, int maxX, int maxY, int maxZ, boolean requiresUpdate) {
-        int chunkMinX = MathHelper.bucketInt(minX, 16);
-        int chunkMinY = MathHelper.bucketInt(minY, 16);
-        int chunkMinZ = MathHelper.bucketInt(minZ, 16);
-        int chunkMaxX = MathHelper.bucketInt(maxX, 16);
-        int chunkMaxY = MathHelper.bucketInt(maxY, 16);
-        int chunkMaxZ = MathHelper.bucketInt(maxZ, 16);
+        int chunkMinX = MathHelper.intFloorDiv(minX, 16);
+        int chunkMinY = MathHelper.intFloorDiv(minY, 16);
+        int chunkMinZ = MathHelper.intFloorDiv(minZ, 16);
+        int chunkMaxX = MathHelper.intFloorDiv(maxX, 16);
+        int chunkMaxY = MathHelper.intFloorDiv(maxY, 16);
+        int chunkMaxZ = MathHelper.intFloorDiv(maxZ, 16);
         for (int worldChunkX = chunkMinX; worldChunkX <= chunkMaxX; ++worldChunkX) {
             int chunkX = worldChunkX % this.chunkRangeX;
             if (chunkX < 0) {
@@ -113,9 +113,9 @@ public class BlockSystemViewFrustum {
 
     @Nullable
     protected BlockSystemRenderChunk getChunk(BlockPos pos) {
-        int chunkX = MathHelper.bucketInt(pos.getX(), 16);
-        int chunkY = MathHelper.bucketInt(pos.getY(), 16);
-        int chunkZ = MathHelper.bucketInt(pos.getZ(), 16);
+        int chunkX = MathHelper.intFloorDiv(pos.getX(), 16);
+        int chunkY = MathHelper.intFloorDiv(pos.getY(), 16);
+        int chunkZ = MathHelper.intFloorDiv(pos.getZ(), 16);
         if (chunkY >= 0 && chunkY < this.chunkRangeY) {
             chunkX = chunkX % this.chunkRangeX;
             if (chunkX < 0) {

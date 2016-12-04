@@ -64,7 +64,7 @@ public class MultiplayerChunkCacheBlockSystem implements IChunkProvider {
     }
 
     @Override
-    public boolean unloadQueuedChunks() {
+    public boolean tick() {
         long time = System.currentTimeMillis();
         for (Chunk chunk : this.chunkMapping.values()) {
             chunk.onTick(System.currentTimeMillis() - time > 5L);

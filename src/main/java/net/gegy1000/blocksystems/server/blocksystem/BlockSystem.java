@@ -315,13 +315,13 @@ public abstract class BlockSystem extends World {
     }
 
     @Override
-    public boolean spawnEntityInWorld(Entity entity) {
-        entity.worldObj = this.mainWorld;
+    public boolean spawnEntity(Entity entity) {
+        entity.world = this.mainWorld;
         Point3d transformedPosition = this.getTransformedPosition(new Point3d(entity.posX, entity.posY, entity.posZ));
         entity.posX = transformedPosition.getX();
         entity.posY = transformedPosition.getY();
         entity.posZ = transformedPosition.getZ();
-        return this.mainWorld.spawnEntityInWorld(entity);
+        return this.mainWorld.spawnEntity(entity);
     }
 
     @Override
@@ -402,12 +402,12 @@ public abstract class BlockSystem extends World {
             if (!Double.isNaN(end.xCoord) && !Double.isNaN(end.yCoord) && !Double.isNaN(end.zCoord)) {
                 start = this.getUntransformedPosition(start);
                 end = this.getUntransformedPosition(end);
-                int endX = MathHelper.floor_double(end.xCoord);
-                int endY = MathHelper.floor_double(end.yCoord);
-                int endZ = MathHelper.floor_double(end.zCoord);
-                int traceX = MathHelper.floor_double(start.xCoord);
-                int traceY = MathHelper.floor_double(start.yCoord);
-                int traceZ = MathHelper.floor_double(start.zCoord);
+                int endX = MathHelper.floor(end.xCoord);
+                int endY = MathHelper.floor(end.yCoord);
+                int endZ = MathHelper.floor(end.zCoord);
+                int traceX = MathHelper.floor(start.xCoord);
+                int traceY = MathHelper.floor(start.yCoord);
+                int traceZ = MathHelper.floor(start.zCoord);
                 BlockPos tracePos = new BlockPos(traceX, traceY, traceZ);
                 IBlockState startState = this.getBlockState(tracePos);
                 Block startBlock = startState.getBlock();
@@ -488,9 +488,9 @@ public abstract class BlockSystem extends World {
                         sideHit = endZ > traceZ ? EnumFacing.NORTH : EnumFacing.SOUTH;
                         start = new Vec3d(start.xCoord + totalDeltaX * deltaZ, start.yCoord + totalDeltaY * deltaZ, targetZ);
                     }
-                    traceX = MathHelper.floor_double(start.xCoord) - (sideHit == EnumFacing.EAST ? 1 : 0);
-                    traceY = MathHelper.floor_double(start.yCoord) - (sideHit == EnumFacing.UP ? 1 : 0);
-                    traceZ = MathHelper.floor_double(start.zCoord) - (sideHit == EnumFacing.SOUTH ? 1 : 0);
+                    traceX = MathHelper.floor(start.xCoord) - (sideHit == EnumFacing.EAST ? 1 : 0);
+                    traceY = MathHelper.floor(start.yCoord) - (sideHit == EnumFacing.UP ? 1 : 0);
+                    traceZ = MathHelper.floor(start.zCoord) - (sideHit == EnumFacing.SOUTH ? 1 : 0);
                     tracePos = new BlockPos(traceX, traceY, traceZ);
                     IBlockState traceState = this.getBlockState(tracePos);
                     Block traceBlock = traceState.getBlock();

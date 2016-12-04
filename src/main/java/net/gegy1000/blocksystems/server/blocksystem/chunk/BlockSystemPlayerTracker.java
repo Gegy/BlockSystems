@@ -90,10 +90,10 @@ public class BlockSystemPlayerTracker {
                 BlockSystems.NETWORK_WRAPPER.sendTo(new UnloadChunkMessage(this.blockSystem, this.chunkPosition.chunkXPos, this.chunkPosition.chunkZPos), player);
             }
             this.players.remove(player);
-            World world = player.worldObj;
-            player.worldObj = this.blockSystem;
+            World world = player.world;
+            player.world = this.blockSystem;
             MinecraftForge.EVENT_BUS.post(new ChunkWatchEvent.UnWatch(this.chunkPosition, player));
-            player.worldObj = world;
+            player.world = world;
             if (this.players.isEmpty()) {
                 this.trackManager.removeTracker(this);
             }
@@ -131,10 +131,10 @@ public class BlockSystemPlayerTracker {
             for (EntityPlayerMP player : this.players) {
                 BlockSystems.NETWORK_WRAPPER.sendTo(message, player);
 //                this.blockSystem.getEntityTracker().sendLeashedEntitiesInChunk(player, this.providingChunk); TODO
-                World world = player.worldObj;
-                player.worldObj = this.blockSystem;
+                World world = player.world;
+                player.world = this.blockSystem;
                 MinecraftForge.EVENT_BUS.post(new ChunkWatchEvent.Watch(this.chunkPosition, player));
-                player.worldObj = world;
+                player.world = world;
             }
             return true;
         }

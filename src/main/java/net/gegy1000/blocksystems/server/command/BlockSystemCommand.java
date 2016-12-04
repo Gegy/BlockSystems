@@ -14,12 +14,12 @@ import net.gegy1000.blocksystems.server.blocksystem.ServerBlockSystemHandler;
 
 public class BlockSystemCommand extends CommandBase {
     @Override
-    public String getCommandName() {
+    public String getName() {
         return "blocksystem";
     }
 
     @Override
-    public String getCommandUsage(ICommandSender sender) {
+    public String getUsage(ICommandSender sender) {
         return "blocksystem";
     }
 

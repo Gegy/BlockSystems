@@ -67,7 +67,7 @@ public class ClientBlockSystemListener implements IWorldEventListener {
         Entity entity = this.mc.getRenderViewEntity();
         if (this.mc != null && entity != null && this.mc.effectRenderer != null) {
             int particleSetting = this.mc.gameSettings.particleSetting;
-            if (particleSetting == 1 && this.mc.theWorld.rand.nextInt(3) == 0) {
+            if (particleSetting == 1 && this.mc.world.rand.nextInt(3) == 0) {
                 particleSetting = 2;
             }
             double deltaX = entity.posX - xCoord;
@@ -106,10 +106,10 @@ public class ClientBlockSystemListener implements IWorldEventListener {
     @Override
     public void playEvent(EntityPlayer player, int type, BlockPos pos, int data) {
         RenderGlobal renderGlobal = this.mc.renderGlobal;
-        WorldClient previousWorld = renderGlobal.theWorld;
-        renderGlobal.theWorld = this.wrapper;
+        WorldClient previousWorld = renderGlobal.world;
+        renderGlobal.world = this.wrapper;
         renderGlobal.playEvent(player, type, pos, data);
-        renderGlobal.theWorld = previousWorld;
+        renderGlobal.world = previousWorld;
     }
 
     @Override

@@ -23,8 +23,8 @@ public class BlockSystemBlock extends Block implements DefaultRenderedItem {
     }
 
     @Override
-    public IBlockState onBlockPlaced(World world, BlockPos pos, EnumFacing facing, float hitX, float hitY, float hitZ, int meta, EntityLivingBase placer) {
-        IBlockState state = super.onBlockPlaced(world, pos, facing, hitX, hitY, hitZ, meta, placer);
+    public IBlockState getStateForPlacement(World world, BlockPos pos, EnumFacing facing, float hitX, float hitY, float hitZ, int meta, EntityLivingBase placer) {
+        IBlockState state = super.getStateForPlacement(world, pos, facing, hitX, hitY, hitZ, meta, placer);
         if (!(world instanceof BlockSystem)) {
             if (!world.isRemote) {
                 ServerBlockSystemHandler handler = BlockSystems.PROXY.getBlockSystemHandler(world);

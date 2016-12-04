@@ -49,13 +49,13 @@ public class ServerProxy {
     }
 
     public void scheduleTask(MessageContext context, Runnable runnable) {
-        WorldServer world = (WorldServer) context.getServerHandler().playerEntity.worldObj;
+        WorldServer world = (WorldServer) context.getServerHandler().playerEntity.world;
         world.addScheduledTask(runnable);
     }
 
     public void handleMessage(BaseMessage message, MessageContext context) {
         EntityPlayerMP player = context.getServerHandler().playerEntity;
-        this.scheduleTask(context, () -> message.onReceiveServer(player.getServer(), (WorldServer) player.worldObj, player, context));
+        this.scheduleTask(context, () -> message.onReceiveServer(player.getServer(), (WorldServer) player.world, player, context));
     }
 
     public ServerBlockSystemHandler getBlockSystemHandler(World world) {

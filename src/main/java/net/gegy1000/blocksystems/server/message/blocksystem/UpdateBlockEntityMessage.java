@@ -44,7 +44,7 @@ public class UpdateBlockEntityMessage extends BaseMessage<UpdateBlockEntityMessa
     }
 
     public UpdateBlockEntityMessage(BlockSystem blockSystem, SPacketUpdateTileEntity packet) {
-        this(blockSystem, packet.blockPos, packet.metadata, packet.nbt);
+        this(blockSystem, packet.blockPos, packet.tileEntityType, packet.nbt);
     }
 
     @Override

@@ -8,7 +8,7 @@ import java.util.List;
 
 public class NetworkHelper {
     public static <T extends BaseMessage<T>> void sendToAllNearExcept(EntityPlayer except, double x, double y, double z, double radius, int dimension, BaseMessage<T> message) {
-        List<EntityPlayer> players = except.worldObj.playerEntities;
+        List<EntityPlayer> players = except.world.playerEntities;
         for (EntityPlayer player : players) {
             if (player instanceof EntityPlayerMP && player != except && player.dimension == dimension) {
                 double deltaX = x - player.posX;

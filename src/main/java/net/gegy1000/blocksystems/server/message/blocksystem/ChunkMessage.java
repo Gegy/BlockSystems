@@ -44,7 +44,7 @@ public class ChunkMessage extends BaseMessage<ChunkMessage> {
         this.x = chunk.xPosition;
         this.z = chunk.zPosition;
         this.loadChunk = mask == 65535;
-        boolean hasSkylight = !blockSystem.getMainWorld().provider.getHasNoSky();
+        boolean hasSkylight = !blockSystem.getMainWorld().provider.hasNoSky();
         this.buffer = new byte[this.calculateChunkSize(chunk, hasSkylight, mask)];
         this.availableSections = this.extractChunkData(new PacketBuffer(this.getWriteBuffer()), chunk, hasSkylight, mask);
         this.tileEntityTags = Lists.newArrayList();

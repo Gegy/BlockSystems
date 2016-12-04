@@ -55,7 +55,7 @@ public class ServerBlockSystemHandler {
         ItemStack heldItem = player.getHeldItem(hand);
         if (heldItem != null) {
             int prevSize = heldItem.stackSize;
-            ActionResult<ItemStack> result = heldItem.useItemRightClick(player.worldObj, player, hand);
+            ActionResult<ItemStack> result = heldItem.useItemRightClick(player.world, player, hand);
             if (result.getType() != EnumActionResult.SUCCESS) {
                 for (Map.Entry<Integer, BlockSystem> blockSystem : this.blockSystems.entrySet()) {
                     result = heldItem.useItemRightClick(blockSystem.getValue(), player, hand);

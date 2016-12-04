@@ -81,12 +81,12 @@ public class BlockSystemHooks {
 
     public static void getMouseOver() {
         Minecraft mc = Minecraft.getMinecraft();
-        if (mc.objectMouseOver != null && mc.thePlayer != null) {
-            Vec3d eyePos = mc.thePlayer.getPositionEyes(1.0F);
-            ServerBlockSystemHandler handler = BlockSystems.PROXY.getBlockSystemHandler(mc.theWorld);
-            BlockSystem blockSystem = handler.getMousedOver(mc.thePlayer);
+        if (mc.objectMouseOver != null && mc.player != null) {
+            Vec3d eyePos = mc.player.getPositionEyes(1.0F);
+            ServerBlockSystemHandler handler = BlockSystems.PROXY.getBlockSystemHandler(mc.world);
+            BlockSystem blockSystem = handler.getMousedOver(mc.player);
             if (blockSystem != null) {
-                RayTraceResult mousedOver = handler.getMousedOverResult(mc.thePlayer);
+                RayTraceResult mousedOver = handler.getMousedOverResult(mc.player);
                 double length = mc.objectMouseOver.hitVec.subtract(eyePos).lengthSquared();
                 Vec3d blockSystemEyePos = blockSystem.getUntransformedPosition(eyePos);
                 if (mousedOver.hitVec.subtract(blockSystemEyePos).lengthSquared() < length) {

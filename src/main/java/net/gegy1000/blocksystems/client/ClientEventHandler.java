@@ -25,7 +25,7 @@ public class ClientEventHandler {
 
     @SubscribeEvent
     public void onClientTick(TickEvent.ClientTickEvent event) {
-        WorldClient world = MINECRAFT.theWorld;
+        WorldClient world = MINECRAFT.world;
         if (world != null) {
             BlockSystems.PROXY.getBlockSystemHandler(world).update();
             BlockSystemRenderHandler.update();
@@ -68,7 +68,7 @@ public class ClientEventHandler {
     public void onLivingDeath(LivingDeathEvent event) {
         Entity entity = event.getEntity();
         if (entity instanceof EntityPlayer) {
-            BlockSystems.PROXY.getBlockSystemHandler(entity.worldObj).removePlayer((EntityPlayer) entity);
+            BlockSystems.PROXY.getBlockSystemHandler(entity.world).removePlayer((EntityPlayer) entity);
         }
     }
 
@@ -81,7 +81,7 @@ public class ClientEventHandler {
     @SubscribeEvent
     public void onRenderWorldLast(RenderWorldLastEvent event) {
         GlStateManager.enableFog();
-        EntityPlayer player = MINECRAFT.thePlayer;
+        EntityPlayer player = MINECRAFT.player;
         float partialTicks = event.getPartialTicks();
         double playerX = player.lastTickPosX + (player.posX - player.lastTickPosX) * partialTicks;
         double playerY = player.lastTickPosY + (player.posY - player.lastTickPosY) * partialTicks;

@@ -240,7 +240,7 @@ public class BlockSystemRenderChunk {
     }
 
     protected double getDistanceSq() {
-        EntityPlayerSP player = Minecraft.getMinecraft().thePlayer;
+        EntityPlayerSP player = Minecraft.getMinecraft().player;
         double deltaX = this.boundingBox.minX + 8.0D - player.posX;
         double deltaY = this.boundingBox.minY + 8.0D - player.posY;
         double deltaZ = this.boundingBox.minZ + 8.0D - player.posZ;

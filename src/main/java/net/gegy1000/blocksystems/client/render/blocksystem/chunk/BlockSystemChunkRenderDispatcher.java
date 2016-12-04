@@ -49,9 +49,9 @@ public class BlockSystemChunkRenderDispatcher {
 
     public BlockSystemChunkRenderDispatcher(int builderCount) {
         int memoryAllocation = Math.max(1, (int) (Runtime.getRuntime().maxMemory() * 0.3) / 10485760);
-        int threadCount = Math.max(1, MathHelper.clamp_int(Runtime.getRuntime().availableProcessors(), 1, memoryAllocation / 5));
+        int threadCount = Math.max(1, MathHelper.clamp(Runtime.getRuntime().availableProcessors(), 1, memoryAllocation / 5));
         if (builderCount < 0) {
-            builderCount = MathHelper.clamp_int(threadCount * 10, 1, memoryAllocation);
+            builderCount = MathHelper.clamp(threadCount * 10, 1, memoryAllocation);
         }
         this.renderBuilderCount = builderCount;
         if (threadCount > 1) {

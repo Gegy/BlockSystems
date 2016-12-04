@@ -103,7 +103,7 @@ public class ClientProxy extends ServerProxy {
     @Override
     public void handleMessage(BaseMessage message, MessageContext context) {
         if (context.side.isClient()) {
-            this.scheduleTask(context, () -> message.onReceiveClient(MINECRAFT, MINECRAFT.theWorld, MINECRAFT.thePlayer, context));
+            this.scheduleTask(context, () -> message.onReceiveClient(MINECRAFT, MINECRAFT.world, MINECRAFT.player, context));
         } else {
             super.handleMessage(message, context);
         }
@@ -111,6 +111,6 @@ public class ClientProxy extends ServerProxy {
 
     @Override
     public boolean isClientPlayer(EntityPlayer player) {
-        return player == MINECRAFT.thePlayer;
+        return player == MINECRAFT.player;
     }
 }

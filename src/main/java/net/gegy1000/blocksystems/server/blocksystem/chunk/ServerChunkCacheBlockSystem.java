@@ -145,7 +145,7 @@ public class ServerChunkCacheBlockSystem extends ChunkProviderServer {
     }
 
     @Override
-    public boolean unloadQueuedChunks() {
+    public boolean tick() {
         if (!this.world.disableLevelSaving) {
             if (!this.droppedChunksSet.isEmpty()) {
                 for (ChunkPos forced : this.world.getPersistentChunks().keySet()) {
