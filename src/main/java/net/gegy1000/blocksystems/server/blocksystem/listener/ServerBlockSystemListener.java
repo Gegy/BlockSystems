@@ -1,8 +1,8 @@
 package net.gegy1000.blocksystems.server.blocksystem.listener;
 
-import net.gegy1000.blocksystems.BlockSystems;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystemServer;
+import net.gegy1000.blocksystems.server.message.NetworkHelper;
 import net.gegy1000.blocksystems.server.message.blocksystem.PlayEventMessage;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.Entity;
@@ -16,7 +16,6 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.IWorldEventListener;
 import net.minecraft.world.World;
 import net.minecraftforge.fml.common.FMLCommonHandler;
-import net.minecraftforge.fml.common.network.NetworkRegistry;
 
 public class ServerBlockSystemListener implements IWorldEventListener {
     private final MinecraftServer server;
@@ -69,7 +68,9 @@ public class ServerBlockSystemListener implements IWorldEventListener {
     @Override
     public void playEvent(EntityPlayer player, int type, BlockPos pos, int data) {
         Vec3d transformed = this.blockSystem.getTransformedPosition(new Vec3d(pos.getX(), pos.getY(), pos.getZ()));
-        BlockSystems.NETWORK_WRAPPER.sendToAllAround(new PlayEventMessage(this.blockSystem, pos, type, data, false), new NetworkRegistry.TargetPoint(this.blockSystem.getMainWorld().provider.getDimension(), transformed.xCoord, transformed.yCoord, transformed.zCoord, 64.0));
+        int dimension = this.blockSystem.getMainWorld().provider.getDimension();
+        PlayEventMessage message = new PlayEventMessage(this.blockSystem, pos, type, data, false);
+        NetworkHelper.sendToAllNearExcept(player, transformed.xCoord, transformed.yCoord, transformed.zCoord,64.0, dimension, message);
     }
 
     @Override
