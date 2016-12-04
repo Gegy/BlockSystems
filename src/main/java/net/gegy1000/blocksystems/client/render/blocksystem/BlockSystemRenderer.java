@@ -54,6 +54,7 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.util.vector.Vector3f;
 
 import javax.vecmath.Point3d;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -62,7 +63,7 @@ import java.util.Queue;
 import java.util.Set;
 
 @SideOnly(Side.CLIENT)
-public class BlockSystemRenderer implements IWorldEventListener {
+public class BlockSystemRenderer extends RenderGlobal implements IWorldEventListener {
     private static final Minecraft MC = Minecraft.getMinecraft();
     private static final TextureManager TEXTURE_MANAGER = MC.getTextureManager();
     private static final BlockRendererDispatcher BLOCK_RENDERER_DISPATCHER = MC.getBlockRendererDispatcher();
@@ -93,7 +94,7 @@ public class BlockSystemRenderer implements IWorldEventListener {
 
     private BlockSystemRenderChunkContainer chunkContainer;
     private ChunkRenderDispatcher dispatcher;
-    
+
     private int viewDistance;
     private boolean vbosEnabled;
 
@@ -111,6 +112,7 @@ public class BlockSystemRenderer implements IWorldEventListener {
     }
 
     public BlockSystemRenderer(BlockSystem blockSystem) {
+        super(MC);
         this.blockSystem = blockSystem;
         this.viewDistance = -1;
         this.chunkContainer = new VBORenderChunkContainer();
@@ -394,8 +396,7 @@ public class BlockSystemRenderer implements IWorldEventListener {
             this.displayListEntitiesDirty = true;
             this.chunkRenderInformation.clear();
             this.queuedChunkUpdates.clear();
-            //TODO Custom render global object
-            this.viewFrustum = new BlockSystemViewFrustum(this, this.blockSystem, viewDistance, MC.renderGlobal, vbos ? RenderChunk::new : ListedRenderChunk::new);
+            this.viewFrustum = new BlockSystemViewFrustum(this, this.blockSystem, viewDistance, this, vbos ? RenderChunk::new : ListedRenderChunk::new);
             this.viewFrustum.updateChunkPositions(untransformed.x, untransformed.z);
         }
     }
@@ -511,7 +512,8 @@ public class BlockSystemRenderer implements IWorldEventListener {
         this.viewFrustum.delete();
     }
 
-    public void updateTileEntities(Set<TileEntity> remove, Set<TileEntity> add) {
+    @Override
+    public void updateTileEntities(Collection<TileEntity> remove, Collection<TileEntity> add) {
         synchronized (this.blockEntities) {
             this.blockEntities.removeAll(remove);
             this.blockEntities.addAll(add);
@@ -539,7 +541,8 @@ public class BlockSystemRenderer implements IWorldEventListener {
         }
     }
 
-    private Vector3f getViewVector(Entity entity, double partialTicks) {
+    @Override
+    protected Vector3f getViewVector(Entity entity, double partialTicks) {
         float pitch = (float) (entity.prevRotationPitch + (entity.rotationPitch - entity.prevRotationPitch) * partialTicks);
         float yaw = (float) (entity.prevRotationYaw + (entity.rotationYaw - entity.prevRotationYaw) * partialTicks);
         if (MC.gameSettings.thirdPersonView == 2) {

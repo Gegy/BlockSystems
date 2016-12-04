@@ -68,13 +68,37 @@ public class BlockSystemChunk extends Chunk {
             BlockSystemSavedData.addPartitionToQueue(this.mainWorld, this.partitionPosition);
             Chunk chunk = BlockSystemWorldAccess.getChunk(this.mainWorld, this.partitionPosition.getX(), this.partitionPosition.getZ());
             BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-            for (int x = 0; x < 16; x++) {
-                for (int y = 0; y < 256; y++) {
-                    for (int z = 0; z < 16; z++) {
-                        pos.setPos(x, y, z);
-                        this.setBlockState(pos, chunk.getBlockState(pos));
+            BlockPos.MutableBlockPos worldPos = new BlockPos.MutableBlockPos();
+            int offsetX = this.partitionPosition.getX() << 4;
+            int offsetZ = this.partitionPosition.getZ() << 4;
+            for (int storageY = 0; storageY < 16; storageY++) {
+                int baseY = storageY << 4;
+                int count = 0;
+                ExtendedBlockStorage storage = this.getBlockStorageArray()[storageY];
+                if (storage == NULL_BLOCK_STORAGE) {
+                    storage = new ExtendedBlockStorage(baseY, !this.blockSystem.provider.hasNoSky());
+                }
+                for (int y = 0; y < 16; y++) {
+                    for (int x = 0; x < 16; x++) {
+                        for (int z = 0; z < 16; z++) {
+                            pos.setPos(x, y + baseY, z);
+                            worldPos.setPos(pos.getX() + offsetX, pos.getY(), pos.getZ() + offsetZ);
+                            IBlockState state = chunk.getBlockState(pos);
+                            storage.set(x, y & 15, z, state);
+                            if (state.getBlock() != Blocks.AIR) {
+                                count++;
+                            }
+                            TileEntity tile = chunk.getTileEntity(worldPos, EnumCreateEntityType.CHECK);
+                            if (tile != null) {
+                                this.addTileEntity(new BlockPos(worldPos), tile);
+                            }
+                        }
                     }
                 }
+                if (count > 0) {
+                    this.getBlockStorageArray()[storageY] = storage;
+                }
+                this.blockCount += count;
             }
         }
         this.loading = false;
