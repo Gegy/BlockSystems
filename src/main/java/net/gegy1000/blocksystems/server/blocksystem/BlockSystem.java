@@ -171,6 +171,11 @@ public abstract class BlockSystem extends World {
         return new Vec3d(point.getX(), point.getY(), point.getZ());
     }
 
+    public BlockPos getTransformedPosition(BlockPos pos) {
+        Point3d transformed = this.getTransformedPosition(new Point3d(pos.getX(), pos.getY(), pos.getZ()));
+        return new BlockPos(transformed.x, transformed.y, transformed.z);
+    }
+
     public Point3d getUntransformedPosition(Point3d position) {
         this.untransformMatrix.transform(position);
         position.add(new Point3d(0.5, 0.0, 0.5));
@@ -181,6 +186,11 @@ public abstract class BlockSystem extends World {
         Point3d point = new Point3d(position.xCoord, position.yCoord, position.zCoord);
         this.untransformMatrix.transform(point);
         return new Vec3d(point.getX() + 0.5, point.getY(), point.getZ() + 0.5);
+    }
+
+    public BlockPos getUntransformedPosition(BlockPos pos) {
+        Point3d untransformed = this.getUntransformedPosition(new Point3d(pos.getX(), pos.getY(), pos.getZ()));
+        return new BlockPos(untransformed.x, untransformed.y, untransformed.z);
     }
 
     public Vec3d getTransformedVector(Vec3d vec) {

@@ -4,10 +4,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Queues;
 import com.google.common.collect.Sets;
 import net.gegy1000.blocksystems.BlockSystems;
-import net.gegy1000.blocksystems.client.render.blocksystem.chunk.BlockSystemChunkRenderDispatcher;
-import net.gegy1000.blocksystems.client.render.blocksystem.chunk.BlockSystemRenderChunk;
 import net.gegy1000.blocksystems.client.render.blocksystem.chunk.BlockSystemRenderChunkContainer;
-import net.gegy1000.blocksystems.client.render.blocksystem.chunk.ListedBlockSystemRenderChunk;
 import net.gegy1000.blocksystems.client.render.blocksystem.chunk.VBORenderChunkContainer;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystemPlayerHandler;
@@ -26,6 +23,9 @@ import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.client.renderer.chunk.ChunkRenderDispatcher;
+import net.minecraft.client.renderer.chunk.ListedRenderChunk;
+import net.minecraft.client.renderer.chunk.RenderChunk;
 import net.minecraft.client.renderer.chunk.VisGraph;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.renderer.texture.TextureManager;
@@ -86,14 +86,14 @@ public class BlockSystemRenderer implements IWorldEventListener {
     private BlockSystemViewFrustum viewFrustum;
 
     private final Set<TileEntity> blockEntities = Sets.newHashSet();
-    private Set<BlockSystemRenderChunk> queuedChunkUpdates = Sets.newLinkedHashSet();
+    private Set<RenderChunk> queuedChunkUpdates = Sets.newLinkedHashSet();
     private List<ChunkRenderInformation> chunkRenderInformation = Lists.newArrayListWithCapacity(0x11040);
 
     private boolean displayListEntitiesDirty = true;
 
     private BlockSystemRenderChunkContainer chunkContainer;
-    private BlockSystemChunkRenderDispatcher renderDispatcher;
-
+    private ChunkRenderDispatcher dispatcher;
+    
     private int viewDistance;
     private boolean vbosEnabled;
 
@@ -110,11 +110,11 @@ public class BlockSystemRenderer implements IWorldEventListener {
         }
     }
 
-    public BlockSystemRenderer(BlockSystem blockSystem, BlockSystemChunkRenderDispatcher renderDispatcher) {
+    public BlockSystemRenderer(BlockSystem blockSystem) {
         this.blockSystem = blockSystem;
-        this.renderDispatcher = renderDispatcher;
         this.viewDistance = -1;
         this.chunkContainer = new VBORenderChunkContainer();
+        this.dispatcher = MC.renderGlobal.renderDispatcher;
         this.updateFrustrum(this.getUntransformedPosition(MC.player), MC.gameSettings.renderDistanceChunks, OpenGlHelper.useVbo());
         blockSystem.addEventListener(this);
     }
@@ -316,7 +316,7 @@ public class BlockSystemRenderer implements IWorldEventListener {
         this.chunkContainer.initialize();
 
         BlockPos eyePosition = new BlockPos(viewRenderX, viewRenderY + viewEntity.getEyeHeight(), viewRenderZ);
-        BlockSystemRenderChunk eyeChunk = this.viewFrustum.getChunk(eyePosition);
+        RenderChunk eyeChunk = this.viewFrustum.getChunk(eyePosition);
         BlockPos viewChunkCorner = new BlockPos(MathHelper.floor(viewRenderX / 16.0D) * 16, MathHelper.floor(viewRenderY / 16.0D) * 16, MathHelper.floor(viewRenderZ / 16.0D) * 16);
         this.displayListEntitiesDirty = this.displayListEntitiesDirty || !this.queuedChunkUpdates.isEmpty() || untransformed.x != this.lastViewEntityX || untransformed.y != this.lastViewEntityY || untransformed.z != this.lastViewEntityZ || (double) viewEntity.rotationPitch != this.lastViewEntityPitch || (double) viewEntity.rotationYaw != this.lastViewEntityYaw;
         this.lastViewEntityX = untransformed.x;
@@ -341,7 +341,7 @@ public class BlockSystemRenderer implements IWorldEventListener {
                 int y = eyePosition.getY() > 0 ? 248 : 8;
                 for (int x = -this.viewDistance; x <= this.viewDistance; ++x) {
                     for (int z = -this.viewDistance; z <= this.viewDistance; ++z) {
-                        BlockSystemRenderChunk chunk = this.viewFrustum.getChunk(new BlockPos((x << 4) + 8, y, (z << 4) + 8));
+                        RenderChunk chunk = this.viewFrustum.getChunk(new BlockPos((x << 4) + 8, y, (z << 4) + 8));
                         if (chunk != null && !chunk.compiledChunk.isEmpty()/* && ((ICamera) camera).isBoundingBoxInFrustum(chunk.boundingBox)*/) { //TODO Camera Culling
                             chunk.setFrameIndex(frameCount);
                             queue.add(new ChunkRenderInformation(chunk, null, 0));
@@ -351,11 +351,11 @@ public class BlockSystemRenderer implements IWorldEventListener {
             }
             while (!queue.isEmpty()) {
                 ChunkRenderInformation renderInformation = queue.poll();
-                BlockSystemRenderChunk chunk = renderInformation.chunk;
+                RenderChunk chunk = renderInformation.chunk;
                 EnumFacing facing = renderInformation.facing;
                 this.chunkRenderInformation.add(renderInformation);
                 for (EnumFacing offset : EnumFacing.values()) {
-                    BlockSystemRenderChunk offsetChunk = this.getOffsetChunk(viewChunkCorner, chunk, offset);
+                    RenderChunk offsetChunk = this.getOffsetChunk(viewChunkCorner, chunk, offset);
                     if ((!renderChunksMany || !renderInformation.hasDirection(offset.getOpposite())) && (!renderChunksMany || facing == null || chunk.getCompiledChunk().isVisible(facing.getOpposite(), offset)) && offsetChunk != null && offsetChunk.setFrameIndex(frameCount)/* && ((ICamera) camera).isBoundingBoxInFrustum(offsetChunk.boundingBox)*/) { //TODO Camera culling
                         ChunkRenderInformation offsetRenderInformation = new ChunkRenderInformation(offsetChunk, offset, renderInformation.index + 1);
                         offsetRenderInformation.setDirection(renderInformation.setFacing, offset);
@@ -365,18 +365,18 @@ public class BlockSystemRenderer implements IWorldEventListener {
             }
         }
 
-        Set<BlockSystemRenderChunk> newQueuedChunkUpdates = this.queuedChunkUpdates;
+        Set<RenderChunk> newQueuedChunkUpdates = this.queuedChunkUpdates;
         this.queuedChunkUpdates = Sets.newLinkedHashSet();
         for (ChunkRenderInformation renderInformation : this.chunkRenderInformation) {
-            BlockSystemRenderChunk chunk = renderInformation.chunk;
+            RenderChunk chunk = renderInformation.chunk;
             if (chunk.isNeedsUpdate() || newQueuedChunkUpdates.contains(chunk)) {
                 this.displayListEntitiesDirty = true;
                 BlockPos centerPos = chunk.getPosition().add(8, 8, 8);
                 boolean distance = centerPos.distanceSq(eyePosition) < 768.0D;
-                if (!chunk.doesNeedUpdateNow() && !distance) {
+                if (!chunk.isNeedsUpdateCustom() && !distance) {
                     this.queuedChunkUpdates.add(chunk);
                 } else {
-                    this.renderDispatcher.updateChunkNow(chunk);
+                    this.dispatcher.updateChunkNow(chunk);
                     chunk.clearNeedsUpdate();
                 }
             }
@@ -394,7 +394,8 @@ public class BlockSystemRenderer implements IWorldEventListener {
             this.displayListEntitiesDirty = true;
             this.chunkRenderInformation.clear();
             this.queuedChunkUpdates.clear();
-            this.viewFrustum = new BlockSystemViewFrustum(this, this.blockSystem, viewDistance, vbos ? BlockSystemRenderChunk::new : ListedBlockSystemRenderChunk::new);
+            //TODO Custom render global object
+            this.viewFrustum = new BlockSystemViewFrustum(this, this.blockSystem, viewDistance, MC.renderGlobal, vbos ? RenderChunk::new : ListedRenderChunk::new);
             this.viewFrustum.updateChunkPositions(untransformed.x, untransformed.z);
         }
     }
@@ -412,7 +413,7 @@ public class BlockSystemRenderer implements IWorldEventListener {
                 int count = 0;
                 for (ChunkRenderInformation renderInformation : this.chunkRenderInformation) {
                     if (renderInformation.chunk.compiledChunk.isLayerStarted(layer) && count++ < 15) {
-                        this.renderDispatcher.updateTransparencyLater(renderInformation.chunk);
+                        this.dispatcher.updateTransparencyLater(renderInformation.chunk);
                     }
                 }
             }
@@ -423,7 +424,7 @@ public class BlockSystemRenderer implements IWorldEventListener {
         int target = isTranslucent ? -1 : this.chunkRenderInformation.size();
         int increment = isTranslucent ? -1 : 1;
         for (int i = start; i != target; i += increment) {
-            BlockSystemRenderChunk chunk = this.chunkRenderInformation.get(i).chunk;
+            RenderChunk chunk = this.chunkRenderInformation.get(i).chunk;
             if (!chunk.getCompiledChunk().isLayerEmpty(layer)) {
                 ++count;
                 this.chunkContainer.addChunk(chunk);
@@ -482,16 +483,16 @@ public class BlockSystemRenderer implements IWorldEventListener {
     }
 
     public void updateChunks(long finishTimeNano) {
-        this.displayListEntitiesDirty |= this.renderDispatcher.runChunkUploads(finishTimeNano);
+        this.displayListEntitiesDirty |= this.dispatcher.runChunkUploads(finishTimeNano);
         if (!this.queuedChunkUpdates.isEmpty()) {
-            Iterator<BlockSystemRenderChunk> iterator = this.queuedChunkUpdates.iterator();
+            Iterator<RenderChunk> iterator = this.queuedChunkUpdates.iterator();
             while (iterator.hasNext()) {
-                BlockSystemRenderChunk chunk = iterator.next();
+                RenderChunk chunk = iterator.next();
                 boolean updated;
-                if (chunk.doesNeedUpdateNow()) {
-                    updated = this.renderDispatcher.updateChunkNow(chunk);
+                if (chunk.isNeedsUpdateCustom()) {
+                    updated = this.dispatcher.updateChunkNow(chunk);
                 } else {
-                    updated = this.renderDispatcher.updateChunkLater(chunk);
+                    updated = this.dispatcher.updateChunkLater(chunk);
                 }
                 if (!updated) {
                     break;
@@ -529,8 +530,8 @@ public class BlockSystemRenderer implements IWorldEventListener {
         return visibility.getVisibleFacings(pos);
     }
 
-    private BlockSystemRenderChunk getOffsetChunk(BlockPos pos, BlockSystemRenderChunk chunk, EnumFacing facing) {
-        BlockPos offset = chunk.getOffset(facing);
+    private RenderChunk getOffsetChunk(BlockPos pos, RenderChunk chunk, EnumFacing facing) {
+        BlockPos offset = chunk.getBlockPosOffset16(facing);
         if (!(MathHelper.abs(pos.getX() - offset.getX()) > this.viewDistance * 16) && offset.getY() >= 0 && offset.getY() < 256) {
             return this.viewFrustum.getChunk(offset);
         } else {
@@ -607,12 +608,12 @@ public class BlockSystemRenderer implements IWorldEventListener {
 
     @SideOnly(Side.CLIENT)
     private class ChunkRenderInformation {
-        private final BlockSystemRenderChunk chunk;
+        private final RenderChunk chunk;
         private final EnumFacing facing;
         private byte setFacing;
         private final int index;
 
-        private ChunkRenderInformation(BlockSystemRenderChunk chunk, EnumFacing facing, int index) {
+        private ChunkRenderInformation(RenderChunk chunk, EnumFacing facing, int index) {
             this.chunk = chunk;
             this.facing = facing;
             this.index = index;

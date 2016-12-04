@@ -7,6 +7,7 @@ import net.gegy1000.blocksystems.server.world.BlockSystemWorldAccess;
 import net.gegy1000.blocksystems.server.world.HookedChunk;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.particle.Particle;
+import net.minecraft.client.renderer.chunk.ChunkCompileTaskGenerator;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.RayTraceResult;
@@ -94,5 +95,14 @@ public class BlockSystemHooks {
                 }
             }
         }
+    }
+
+    public static BlockPos chunkWorkerGetPosition(ChunkCompileTaskGenerator generator, BlockPos pos) {
+        World world = generator.getRenderChunk().getWorld();
+        if (world instanceof BlockSystem) {
+            BlockSystem blockSystem = (BlockSystem) world;
+            return blockSystem.getUntransformedPosition(pos);
+        }
+        return pos;
     }
 }

@@ -2,6 +2,7 @@ package net.gegy1000.blocksystems.client.render.blocksystem.chunk;
 
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.OpenGlHelper;
+import net.minecraft.client.renderer.chunk.RenderChunk;
 import net.minecraft.client.renderer.vertex.VertexBuffer;
 import net.minecraft.util.BlockRenderLayer;
 import net.minecraftforge.fml.relauncher.Side;
@@ -13,11 +14,11 @@ public class VBORenderChunkContainer extends BlockSystemRenderChunkContainer {
     @Override
     public void renderLayer(BlockRenderLayer layer) {
         if (this.initialized) {
-            for (BlockSystemRenderChunk chunk : this.renderChunks) {
-                VertexBuffer builder = chunk.getLayerBuilder(layer.ordinal());
+            for (RenderChunk chunk : this.renderChunks) {
+                VertexBuffer builder = chunk.getVertexBufferByLayer(layer.ordinal());
                 GlStateManager.pushMatrix();
                 this.preRender(chunk);
-                chunk.applyModelViewMatrix();
+                chunk.multModelviewMatrix();
                 builder.bindBuffer();
                 this.setupArrayPointers();
                 builder.drawArrays(GL11.GL_QUADS);

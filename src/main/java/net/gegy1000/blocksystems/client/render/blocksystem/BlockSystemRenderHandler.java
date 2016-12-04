@@ -1,6 +1,5 @@
 package net.gegy1000.blocksystems.client.render.blocksystem;
 
-import net.gegy1000.blocksystems.client.render.blocksystem.chunk.BlockSystemChunkRenderDispatcher;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.RenderHelper;
@@ -13,12 +12,11 @@ import java.util.Map;
 import java.util.Set;
 
 public class BlockSystemRenderHandler {
-    public static final BlockSystemChunkRenderDispatcher CHUNK_RENDER_DISPATCHER = new BlockSystemChunkRenderDispatcher();
     private static final Map<BlockSystem, BlockSystemRenderer> RENDERERS = new HashMap<>();
     private static final Set<BlockSystem> REMOVE = new HashSet<>();
 
     public static void addBlockSystem(BlockSystem blockSystem) {
-        RENDERERS.put(blockSystem, new BlockSystemRenderer(blockSystem, CHUNK_RENDER_DISPATCHER));
+        RENDERERS.put(blockSystem, new BlockSystemRenderer(blockSystem));
     }
 
     public static void removeBlockSystem(BlockSystem blockSystem) {

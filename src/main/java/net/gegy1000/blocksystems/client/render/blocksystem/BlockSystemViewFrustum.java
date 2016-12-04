@@ -1,41 +1,45 @@
 package net.gegy1000.blocksystems.client.render.blocksystem;
 
-import net.gegy1000.blocksystems.client.render.blocksystem.chunk.BlockSystemRenderChunk;
+import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
+import net.minecraft.client.renderer.RenderGlobal;
+import net.minecraft.client.renderer.chunk.IRenderChunkFactory;
+import net.minecraft.client.renderer.chunk.RenderChunk;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
-import net.gegy1000.blocksystems.client.render.blocksystem.chunk.RenderChunkFactory;
-import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
 
 import javax.annotation.Nullable;
 
 @SideOnly(Side.CLIENT)
 public class BlockSystemViewFrustum {
+    protected final RenderGlobal renderGlobal;
     protected final BlockSystemRenderer renderer;
     protected final BlockSystem blockSystem;
     protected int chunkRangeY;
     protected int chunkRangeX;
     protected int chunkRangeZ;
-    protected RenderChunkFactory factory;
-    public BlockSystemRenderChunk[] chunks;
+    protected IRenderChunkFactory factory;
+    public RenderChunk[] chunks;
 
-    public BlockSystemViewFrustum(BlockSystemRenderer renderer, BlockSystem blockSystem, int renderDistance, RenderChunkFactory factory) {
+    public BlockSystemViewFrustum(BlockSystemRenderer renderer, BlockSystem blockSystem, int renderDistance, RenderGlobal renderGlobal, IRenderChunkFactory factory) {
         this.renderer = renderer;
         this.blockSystem = blockSystem;
         this.factory = factory;
+        this.renderGlobal = renderGlobal;
         this.setRenderDistance(renderDistance);
         this.populateChunks();
     }
 
     protected void populateChunks() {
         int chunkCount = this.chunkRangeX * this.chunkRangeY * this.chunkRangeZ;
-        this.chunks = new BlockSystemRenderChunk[chunkCount];
+        this.chunks = new RenderChunk[chunkCount];
+        int i = 0;
         for (int chunkX = 0; chunkX < this.chunkRangeX; ++chunkX) {
             for (int chunkY = 0; chunkY < this.chunkRangeY; ++chunkY) {
                 for (int chunkZ = 0; chunkZ < this.chunkRangeZ; ++chunkZ) {
                     int arrayIndex = (chunkZ * this.chunkRangeY + chunkY) * this.chunkRangeX + chunkX;
-                    this.chunks[arrayIndex] = this.factory.create(this.blockSystem, this.renderer);
+                    this.chunks[arrayIndex] = this.factory.create(this.blockSystem, this.renderGlobal, i++);
                     this.chunks[arrayIndex].setPosition(chunkX * 16, chunkY * 16, chunkZ * 16);
                 }
             }
@@ -43,8 +47,8 @@ public class BlockSystemViewFrustum {
     }
 
     public void delete() {
-        for (BlockSystemRenderChunk chunk : this.chunks) {
-            chunk.delete();
+        for (RenderChunk chunk : this.chunks) {
+            chunk.deleteGlResources();
         }
     }
 
@@ -65,7 +69,7 @@ public class BlockSystemViewFrustum {
                 int z = this.getBaseCoordinate(baseZ, blockRangeX, chunkZ);
                 for (int chunkY = 0; chunkY < this.chunkRangeY; ++chunkY) {
                     int y = chunkY * 16;
-                    BlockSystemRenderChunk chunk = this.chunks[(chunkZ * this.chunkRangeY + chunkY) * this.chunkRangeX + chunkX];
+                    RenderChunk chunk = this.chunks[(chunkZ * this.chunkRangeY + chunkY) * this.chunkRangeX + chunkX];
                     chunk.setPosition(x, y, z);
                 }
             }
@@ -104,7 +108,7 @@ public class BlockSystemViewFrustum {
                         chunkZ += this.chunkRangeZ;
                     }
                     int chunkIndex = (chunkZ * this.chunkRangeY + chunkY) * this.chunkRangeX + chunkX;
-                    BlockSystemRenderChunk chunk = this.chunks[chunkIndex];
+                    RenderChunk chunk = this.chunks[chunkIndex];
                     chunk.setNeedsUpdate(requiresUpdate);
                 }
             }
@@ -112,7 +116,7 @@ public class BlockSystemViewFrustum {
     }
 
     @Nullable
-    protected BlockSystemRenderChunk getChunk(BlockPos pos) {
+    protected RenderChunk getChunk(BlockPos pos) {
         int chunkX = MathHelper.intFloorDiv(pos.getX(), 16);
         int chunkY = MathHelper.intFloorDiv(pos.getY(), 16);
         int chunkZ = MathHelper.intFloorDiv(pos.getZ(), 16);
