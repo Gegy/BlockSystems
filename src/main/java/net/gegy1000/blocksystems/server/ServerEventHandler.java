@@ -20,20 +20,23 @@ import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.world.WorldEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
+import net.minecraftforge.fml.common.gameevent.TickEvent.Phase;
 
 import java.util.Map;
 
 public class ServerEventHandler {
     @SubscribeEvent
     public void onWorldTick(TickEvent.WorldTickEvent event) {
-        World world = event.world;
-        ServerBlockSystemHandler handler = BlockSystems.PROXY.getBlockSystemHandler(world);
-        if (handler != null) {
-            handler.update();
-        }
-        if (world instanceof WorldServer) {
-            BlockSystemTrackingHandler trackingHandler = BlockSystemTrackingHandler.get((WorldServer) world);
-            trackingHandler.update();
+        if (event.phase == Phase.START) {
+            World world = event.world;
+            ServerBlockSystemHandler handler = BlockSystems.PROXY.getBlockSystemHandler(world);
+            if (handler != null) {
+                handler.update();
+            }
+            if (world instanceof WorldServer) {
+                BlockSystemTrackingHandler trackingHandler = BlockSystemTrackingHandler.get((WorldServer) world);
+                trackingHandler.update();
+            }
         }
     }
 

@@ -3,6 +3,8 @@ package net.gegy1000.blocksystems.client;
 import net.gegy1000.blocksystems.BlockSystems;
 import net.gegy1000.blocksystems.client.render.blocksystem.BlockSystemRenderHandler;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
+import net.gegy1000.blocksystems.server.blocksystem.BlockSystemPlayerHandler;
+import net.gegy1000.blocksystems.server.blocksystem.ServerBlockSystemHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.GlStateManager;
@@ -17,18 +19,19 @@ import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.world.WorldEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
-import net.gegy1000.blocksystems.server.blocksystem.ServerBlockSystemHandler;
-import net.gegy1000.blocksystems.server.blocksystem.BlockSystemPlayerHandler;
+import net.minecraftforge.fml.common.gameevent.TickEvent.Phase;
 
 public class ClientEventHandler {
     private static final Minecraft MINECRAFT = Minecraft.getMinecraft();
 
     @SubscribeEvent
     public void onClientTick(TickEvent.ClientTickEvent event) {
-        WorldClient world = MINECRAFT.world;
-        if (world != null) {
-            BlockSystems.PROXY.getBlockSystemHandler(world).update();
-            BlockSystemRenderHandler.update();
+        if (event.phase == Phase.START) {
+            WorldClient world = MINECRAFT.world;
+            if (world != null) {
+                BlockSystems.PROXY.getBlockSystemHandler(world).update();
+                BlockSystemRenderHandler.update();
+            }
         }
     }
 

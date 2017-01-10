@@ -15,7 +15,7 @@ public class BlockSystemChunkProvider implements IChunkProvider {
     }
 
     @Override
-    public boolean unloadQueuedChunks() {
+    public boolean tick() {
         return false;
     }
 
