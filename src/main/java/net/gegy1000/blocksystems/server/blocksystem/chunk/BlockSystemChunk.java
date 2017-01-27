@@ -13,6 +13,8 @@ import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 
+import java.util.Map;
+
 public class BlockSystemChunk extends Chunk {
     protected BlockSystem blockSystem;
     protected World mainWorld;
@@ -88,10 +90,6 @@ public class BlockSystemChunk extends Chunk {
                             if (state.getBlock() != Blocks.AIR) {
                                 count++;
                             }
-                            TileEntity tile = chunk.getTileEntity(worldPos, EnumCreateEntityType.CHECK);
-                            if (tile != null) {
-                                this.addTileEntity(new BlockPos(worldPos), tile);
-                            }
                         }
                     }
                 }
@@ -99,6 +97,9 @@ public class BlockSystemChunk extends Chunk {
                     this.getBlockStorageArray()[storageY] = storage;
                 }
                 this.blockCount += count;
+            }
+            for (Map.Entry<BlockPos, TileEntity> entry : chunk.chunkTileEntityMap.entrySet()) {
+                this.addTileEntity(entry.getValue());
             }
         }
         this.loading = false;
