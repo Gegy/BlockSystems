@@ -622,4 +622,14 @@ public abstract class BlockSystem extends World {
     public RotatedAABB getRotatedBounds() {
         return this.rotatedBounds;
     }
+
+    public BlockSystemChunk getChunkFromPartition(BlockPos pos) {
+        for (Map.Entry<ChunkPos, BlockSystemChunk> entry : this.savedChunks.entrySet()) {
+            BlockSystemChunk chunk = entry.getValue();
+            if (chunk.getPartitionPosition().equals(pos)) {
+                return chunk;
+            }
+        }
+        return null;
+    }
 }

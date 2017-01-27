@@ -1,10 +1,15 @@
 package net.gegy1000.blocksystems.server.blocksystem.chunk;
 
-import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import net.gegy1000.blocksystems.BlockSystems;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystemServer;
+import net.gegy1000.blocksystems.server.message.BaseMessage;
+import net.gegy1000.blocksystems.server.message.blocksystem.ChunkMessage;
+import net.gegy1000.blocksystems.server.message.blocksystem.MultiBlockUpdateMessage;
+import net.gegy1000.blocksystems.server.message.blocksystem.SetBlockMessage;
+import net.gegy1000.blocksystems.server.message.blocksystem.UnloadChunkMessage;
+import net.gegy1000.blocksystems.server.message.blocksystem.UpdateBlockEntityMessage;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.network.play.server.SPacketUpdateTileEntity;
@@ -17,18 +22,14 @@ import net.minecraft.world.gen.ChunkProviderServer;
 import net.minecraftforge.common.ForgeModContainer;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.chunkio.ChunkIOExecutor;
-import net.minecraftforge.event.world.ChunkWatchEvent;
-import net.gegy1000.blocksystems.server.message.BaseMessage;
-import net.gegy1000.blocksystems.server.message.blocksystem.ChunkMessage;
-import net.gegy1000.blocksystems.server.message.blocksystem.MultiBlockUpdateMessage;
-import net.gegy1000.blocksystems.server.message.blocksystem.SetBlockMessage;
-import net.gegy1000.blocksystems.server.message.blocksystem.UnloadChunkMessage;
-import net.gegy1000.blocksystems.server.message.blocksystem.UpdateBlockEntityMessage;
+import net.minecraftforge.event.world.ChunkWatchEvent.UnWatch;
+import net.minecraftforge.event.world.ChunkWatchEvent.Watch;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Predicate;
 
 public class BlockSystemPlayerTracker {
     private static final Logger LOGGER = LogManager.getLogger();
@@ -46,14 +47,14 @@ public class BlockSystemPlayerTracker {
     private boolean loading = true;
 
     public BlockSystemPlayerTracker(BlockSystemChunkTracker trackManager, int chunkX, int chunkZ) {
-        this.trackManager = trackManager;
-        this.chunkPosition = new ChunkPos(chunkX, chunkZ);
-        this.blockSystem = trackManager.getBlockSystem();
-        this.blockSystem.getChunkProvider().loadChunk(chunkX, chunkZ, this.loadedRunnable);
         this.loadedRunnable = () -> {
             BlockSystemPlayerTracker.this.providingChunk = (BlockSystemChunk) BlockSystemPlayerTracker.this.blockSystem.getChunkProvider().loadChunk(BlockSystemPlayerTracker.this.chunkPosition.chunkXPos, BlockSystemPlayerTracker.this.chunkPosition.chunkZPos);
             BlockSystemPlayerTracker.this.loading = false;
         };
+        this.trackManager = trackManager;
+        this.chunkPosition = new ChunkPos(chunkX, chunkZ);
+        this.blockSystem = trackManager.getBlockSystem();
+        this.blockSystem.getChunkProvider().loadChunk(chunkX, chunkZ, this.loadedRunnable);
     }
 
     public ChunkPos getChunkPosition() {
@@ -70,7 +71,7 @@ public class BlockSystemPlayerTracker {
             this.players.add(player);
             if (this.sentToPlayers) {
                 this.sendNearbySpecialEntities(player);
-                MinecraftForge.EVENT_BUS.post(new ChunkWatchEvent.Watch(this.chunkPosition, player));
+                MinecraftForge.EVENT_BUS.post(new Watch(this.chunkPosition, player));
             }
         }
     }
@@ -93,7 +94,7 @@ public class BlockSystemPlayerTracker {
             this.players.remove(player);
             World world = player.world;
             player.world = this.blockSystem;
-            MinecraftForge.EVENT_BUS.post(new ChunkWatchEvent.UnWatch(this.chunkPosition, player));
+            MinecraftForge.EVENT_BUS.post(new UnWatch(this.chunkPosition, player));
             player.world = world;
             if (this.players.isEmpty()) {
                 this.trackManager.removeTracker(this);
@@ -134,7 +135,7 @@ public class BlockSystemPlayerTracker {
 //                this.blockSystem.getEntityTracker().sendLeashedEntitiesInChunk(player, this.providingChunk); TODO
                 World world = player.world;
                 player.world = this.blockSystem;
-                MinecraftForge.EVENT_BUS.post(new ChunkWatchEvent.Watch(this.chunkPosition, player));
+                MinecraftForge.EVENT_BUS.post(new Watch(this.chunkPosition, player));
                 player.world = world;
             }
             return true;
@@ -231,12 +232,12 @@ public class BlockSystemPlayerTracker {
     }
 
     public boolean hasPlayerMatching(Predicate<EntityPlayerMP> predicate) {
-        return Iterables.tryFind(this.players, predicate).isPresent();
+        return Iterables.tryFind(this.players, predicate::test).isPresent();
     }
 
     public boolean hasPlayerMatchingInRange(double range, Predicate<EntityPlayerMP> selector) {
         for (EntityPlayerMP player : this.players) {
-            if (selector.apply(player) && this.chunkPosition.getDistanceSq(player) < range * range) {
+            if (selector.test(player) && this.chunkPosition.getDistanceSq(player) < range * range) {
                 return true;
             }
         }

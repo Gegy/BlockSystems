@@ -59,15 +59,14 @@ public class ServerProxy {
     }
 
     public ServerBlockSystemHandler getBlockSystemHandler(World world) {
-        ServerBlockSystemHandler handler = BLOCK_SYSTEM_HANDLERS.get(world);
-        if (handler == null) {
-            handler = new ServerBlockSystemHandler(world);
-            BLOCK_SYSTEM_HANDLERS.put(world, handler);
-        }
-        return handler;
+        return BLOCK_SYSTEM_HANDLERS.computeIfAbsent(world, key -> new ServerBlockSystemHandler(world));
     }
 
     public boolean isClientPlayer(EntityPlayer player) {
+        return false;
+    }
+
+    public boolean isPaused(World world) {
         return false;
     }
 }

@@ -31,6 +31,7 @@ public class ChunkMessage extends BaseMessage<ChunkMessage> {
     private int blockSystem;
     private int x;
     private int z;
+    private BlockPos partitionPosition;
     private int availableSections;
     private byte[] buffer;
     private List<NBTTagCompound> tileEntityTags;
@@ -44,6 +45,7 @@ public class ChunkMessage extends BaseMessage<ChunkMessage> {
         this.x = chunk.xPosition;
         this.z = chunk.zPosition;
         this.loadChunk = mask == 65535;
+        this.partitionPosition = chunk.getPartitionPosition();
         boolean hasSkylight = !blockSystem.getMainWorld().provider.hasNoSky();
         this.buffer = new byte[this.calculateChunkSize(chunk, hasSkylight, mask)];
         this.availableSections = this.extractChunkData(new PacketBuffer(this.getWriteBuffer()), chunk, hasSkylight, mask);
@@ -67,6 +69,7 @@ public class ChunkMessage extends BaseMessage<ChunkMessage> {
         buf.writeInt(this.availableSections);
         buf.writeInt(this.buffer.length);
         buf.writeBytes(this.buffer);
+        buf.writeLong(this.partitionPosition.toLong());
         buf.writeInt(this.tileEntityTags.size());
         for (NBTTagCompound tag : this.tileEntityTags) {
             ByteBufUtils.writeTag(buf, tag);
@@ -83,6 +86,7 @@ public class ChunkMessage extends BaseMessage<ChunkMessage> {
         int bufferSize = buf.readInt();
         this.buffer = new byte[bufferSize];
         buf.readBytes(this.buffer);
+        this.partitionPosition = BlockPos.fromLong(buf.readLong());
         int tileCount = buf.readInt();
         this.tileEntityTags = Lists.newArrayList();
         for (int i = 0; i < tileCount; i++) {
@@ -98,7 +102,8 @@ public class ChunkMessage extends BaseMessage<ChunkMessage> {
             if (this.loadChunk) {
                 clientSystem.loadChunkAction(this.x, this.z, true);
             }
-            Chunk chunk = clientSystem.getChunkFromChunkCoords(this.x, this.z);
+            BlockSystemChunk chunk = (BlockSystemChunk) clientSystem.getChunkFromChunkCoords(this.x, this.z);
+            chunk.setPartitionPosition(this.partitionPosition);
             chunk.fillChunk(this.getReadBuffer(), this.availableSections, this.loadChunk);
             clientSystem.markBlockRangeForRenderUpdate(this.x << 4, 0, this.z << 4, (this.x << 4) + 15, 256, (this.z << 4) + 15);
             if (!this.loadChunk || !(clientSystem.provider instanceof WorldProviderSurface)) {

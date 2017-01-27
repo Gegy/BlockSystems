@@ -18,7 +18,7 @@ import java.util.Map;
 
 public class BlockSystemSavedData extends WorldSavedData {
     private static final ThreadLocal<World> READING_WORLD = new ThreadLocal<>();
-    private static final ThreadLocal<Boolean> LOAD = new ThreadLocal<>();
+    private static final ThreadLocal<Boolean> LOAD = ThreadLocal.withInitial(() -> true);
     private static final ThreadLocal<BlockSystem> CURRENTLY_LOADING = new ThreadLocal<>();
     private static final Map<World, List<Tuple<BlockPos, BlockSystem>>> QUEUED_PARTITIONS = new HashMap<>();
 
@@ -135,8 +135,8 @@ public class BlockSystemSavedData extends WorldSavedData {
         this.markDirty();
     }
 
-    public static void queuePartition(World world, BlockSystem blockSystem, BlockPos pos) {
-        List<Tuple<BlockPos, BlockSystem>> partitions = QUEUED_PARTITIONS.computeIfAbsent(world, k -> new ArrayList<>());
+    public static void enqueuePartition(World world, BlockSystem blockSystem, BlockPos pos) {
+        List<Tuple<BlockPos, BlockSystem>> partitions = QUEUED_PARTITIONS.computeIfAbsent(world, key -> new ArrayList<>());
         partitions.add(new Tuple<>(pos, blockSystem));
     }
 }

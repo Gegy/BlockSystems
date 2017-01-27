@@ -9,6 +9,7 @@ import net.gegy1000.blocksystems.client.render.blocksystem.chunk.VBORenderChunkC
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystemPlayerHandler;
 import net.gegy1000.blocksystems.server.blocksystem.ServerBlockSystemHandler;
+import net.gegy1000.blocksystems.server.blocksystem.chunk.BlockSystemChunk;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockChest;
 import net.minecraft.block.BlockEnderChest;
@@ -42,6 +43,7 @@ import net.minecraft.util.SoundCategory;
 import net.minecraft.util.SoundEvent;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.util.math.Vec3d;
@@ -267,7 +269,13 @@ public class BlockSystemRenderer extends RenderGlobal implements IWorldEventList
                 for (TileEntity blockEntity : blockEntities) {
 //                    if (camera.isBoundingBoxInFrustum(blockEntity.getRenderBoundingBox())) {
                     BlockPos pos = blockEntity.getPos();
-                    TileEntityRendererDispatcher.instance.renderTileEntityAt(blockEntity, pos.getX(), pos.getY(), pos.getZ(), partialTicks, -1);
+                    BlockSystemChunk chunk = this.blockSystem.getChunkFromPartition(pos);
+                    if (chunk != null) {
+                        ChunkPos chunkPos = chunk.getChunkCoordIntPair();
+                        int x = chunkPos.getXStart() + (pos.getX() & 0xF);
+                        int z = chunkPos.getZStart() + (pos.getZ() & 0xF);
+                        TileEntityRendererDispatcher.instance.renderTileEntityAt(blockEntity, x, pos.getY(), z, partialTicks, -1);
+                    }
 //                    }
                 }
             }
@@ -483,6 +491,7 @@ public class BlockSystemRenderer extends RenderGlobal implements IWorldEventList
         this.queueRenderUpdate(x, 0, z, x + 16, 256, z + 16, false);
     }
 
+    @Override
     public void updateChunks(long finishTimeNano) {
         this.displayListEntitiesDirty |= this.dispatcher.runChunkUploads(finishTimeNano);
         if (!this.queuedChunkUpdates.isEmpty()) {

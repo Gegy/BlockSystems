@@ -67,7 +67,7 @@ public class BlockSystemChunk extends Chunk {
         this.blockCount = 0;
         if (compound.hasKey("PartitionPosition")) {
             this.partitionPosition = BlockPos.fromLong(compound.getLong("PartitionPosition"));
-            BlockSystemSavedData.queuePartition(this.mainWorld, this.blockSystem, this.partitionPosition);
+            BlockSystemSavedData.enqueuePartition(this.mainWorld, this.blockSystem, this.partitionPosition);
             Chunk chunk = BlockSystemWorldAccess.getChunk(this.mainWorld, this.partitionPosition.getX(), this.partitionPosition.getZ());
             BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
             BlockPos.MutableBlockPos worldPos = new BlockPos.MutableBlockPos();
@@ -152,6 +152,20 @@ public class BlockSystemChunk extends Chunk {
         IBlockState state = this.getBlockState(pos);
         Block block = state.getBlock();
         return !block.hasTileEntity(state) ? null : block.createTileEntity(this.mainWorld, state);
+    }
+
+    @Override
+    public void addTileEntity(BlockPos pos, TileEntity tile) {
+        BlockPos partitionPos = new BlockPos((pos.getX() & 0xF) + this.partitionPosition.getX(), pos.getY(), (pos.getZ() & 0xF) + this.partitionPosition.getZ());
+        this.mainWorld.setTileEntity(partitionPos, tile);
+    }
+
+    public void setPartitionPosition(BlockPos partitionPosition) {
+        this.partitionPosition = partitionPosition;
+    }
+
+    public BlockPos getPartitionPosition() {
+        return this.partitionPosition;
     }
 
     @Override

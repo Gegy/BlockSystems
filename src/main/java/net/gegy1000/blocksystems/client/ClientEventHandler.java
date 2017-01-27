@@ -28,7 +28,7 @@ public class ClientEventHandler {
     public void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase == Phase.START) {
             WorldClient world = MINECRAFT.world;
-            if (world != null) {
+            if (world != null && world.isRemote && !BlockSystems.PROXY.isPaused(world)) {
                 BlockSystems.PROXY.getBlockSystemHandler(world).update();
                 BlockSystemRenderHandler.update();
             }

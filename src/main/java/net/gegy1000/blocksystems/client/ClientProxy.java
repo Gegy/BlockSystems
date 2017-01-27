@@ -113,4 +113,9 @@ public class ClientProxy extends ServerProxy {
     public boolean isClientPlayer(EntityPlayer player) {
         return player == MINECRAFT.player;
     }
+
+    @Override
+    public boolean isPaused(World world) {
+        return MINECRAFT.isGamePaused();
+    }
 }

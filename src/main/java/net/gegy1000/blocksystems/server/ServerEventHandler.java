@@ -29,13 +29,15 @@ public class ServerEventHandler {
     public void onWorldTick(TickEvent.WorldTickEvent event) {
         if (event.phase == Phase.START) {
             World world = event.world;
-            ServerBlockSystemHandler handler = BlockSystems.PROXY.getBlockSystemHandler(world);
-            if (handler != null) {
-                handler.update();
-            }
-            if (world instanceof WorldServer) {
-                BlockSystemTrackingHandler trackingHandler = BlockSystemTrackingHandler.get((WorldServer) world);
-                trackingHandler.update();
+            if (!BlockSystems.PROXY.isPaused(world)) {
+                ServerBlockSystemHandler handler = BlockSystems.PROXY.getBlockSystemHandler(world);
+                if (handler != null) {
+                    handler.update();
+                }
+                if (world instanceof WorldServer) {
+                    BlockSystemTrackingHandler trackingHandler = BlockSystemTrackingHandler.get((WorldServer) world);
+                    trackingHandler.update();
+                }
             }
         }
     }

@@ -1,6 +1,5 @@
 package net.gegy1000.blocksystems.server.blocksystem.chunk;
 
-import com.google.common.base.Predicate;
 import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.ComparisonChain;
 import com.google.common.collect.Lists;
@@ -8,6 +7,7 @@ import com.google.common.collect.Sets;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.gegy1000.blocksystems.BlockSystems;
+import net.gegy1000.blocksystems.server.blocksystem.BlockSystemPlayerHandler;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystemServer;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -16,14 +16,13 @@ import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.world.WorldProvider;
 import net.minecraft.world.chunk.Chunk;
-import net.gegy1000.blocksystems.server.blocksystem.BlockSystemPlayerHandler;
 
 import javax.annotation.Nullable;
 import javax.vecmath.Point3d;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Predicate;
 
 public class BlockSystemChunkTracker {
     private static final Predicate<EntityPlayerMP> NOT_SPECTATOR = player -> player != null && !player.isSpectator();
@@ -61,16 +60,16 @@ public class BlockSystemChunkTracker {
                         BlockSystemPlayerTracker tracker = iterator.next();
                         Chunk chunk = tracker.getProvidingChunk();
                         if (chunk != null) {
-                            if ((!chunk.isLightPopulated()) || !chunk.isChunkTicked()) {
+                            if (!chunk.isLightPopulated() || !chunk.isChunkTicked()) {
                                 return chunk;
                             }
-                            if (!tracker.hasPlayerMatchingInRange(128.0D, BlockSystemChunkTracker.NOT_SPECTATOR)) {
+                            if (!tracker.hasPlayerMatchingInRange(128.0, BlockSystemChunkTracker.NOT_SPECTATOR)) {
                                 continue;
                             }
+                        } else {
+                            continue;
                         }
-                        if (chunk != null) {
-                            return chunk;
-                        }
+                        return chunk;
                     }
                     return this.endOfData();
                 }
@@ -98,12 +97,12 @@ public class BlockSystemChunkTracker {
 
         if (this.sortMissingChunks && worldTime % 4 == 0) {
             this.sortMissingChunks = false;
-            Collections.sort(this.requestQueue, (tracker1, tracker2) -> ComparisonChain.start().compare(tracker1.getClosestPlayerDistance(), tracker2.getClosestPlayerDistance()).result());
+            (this.requestQueue).sort((tracker1, tracker2) -> ComparisonChain.start().compare(tracker1.getClosestPlayerDistance(), tracker2.getClosestPlayerDistance()).result());
         }
 
         if (this.sortSendToPlayers && worldTime % 4 == 2) {
             this.sortSendToPlayers = false;
-            Collections.sort(this.sendQueue, (tracker1, tracker2) -> ComparisonChain.start().compare(tracker1.getClosestPlayerDistance(), tracker2.getClosestPlayerDistance()).result());
+            (this.sendQueue).sort((tracker1, tracker2) -> ComparisonChain.start().compare(tracker1.getClosestPlayerDistance(), tracker2.getClosestPlayerDistance()).result());
         }
 
         if (!this.requestQueue.isEmpty()) {

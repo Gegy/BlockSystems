@@ -61,11 +61,7 @@ public class BlockSystemTrackingHandler {
     }
 
     public void track(EntityPlayerMP player, BlockSystem blockSystem) {
-        Set<BlockSystem> tracking = this.tracking.get(player);
-        if (tracking == null) {
-            tracking = new HashSet<>();
-            this.tracking.put(player, tracking);
-        }
+        Set<BlockSystem> tracking = this.tracking.computeIfAbsent(player, key -> new HashSet<>());
         if (!tracking.contains(blockSystem)) {
             tracking.add(blockSystem);
             BlockSystems.NETWORK_WRAPPER.sendTo(new TrackMessage(blockSystem), player);
