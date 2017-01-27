@@ -68,7 +68,9 @@ public class BlockSystemChunkTracker {
                                 continue;
                             }
                         }
-                        return chunk;
+                        if (chunk != null) {
+                            return chunk;
+                        }
                     }
                     return this.endOfData();
                 }

@@ -78,7 +78,9 @@ public class ClientEventHandler {
     @SubscribeEvent
     public void onWorldUnload(WorldEvent.Unload event) {
         BlockSystems.PROXY.getBlockSystemHandler(event.getWorld()).unloadWorld();
-        BlockSystemRenderHandler.removeAll();
+        if (event.getWorld().isRemote) {
+            BlockSystemRenderHandler.removeAll();
+        }
     }
 
     @SubscribeEvent

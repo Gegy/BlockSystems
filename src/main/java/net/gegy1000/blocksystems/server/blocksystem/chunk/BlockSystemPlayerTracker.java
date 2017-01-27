@@ -42,10 +42,7 @@ public class BlockSystemPlayerTracker {
     private int changedSectionMask;
     private long lastUpdateInhabitedTime;
     private boolean sentToPlayers;
-    private Runnable loadedRunnable = () -> {
-        BlockSystemPlayerTracker.this.providingChunk = (BlockSystemChunk) BlockSystemPlayerTracker.this.blockSystem.getChunkProvider().loadChunk(BlockSystemPlayerTracker.this.chunkPosition.chunkXPos, BlockSystemPlayerTracker.this.chunkPosition.chunkZPos);
-        BlockSystemPlayerTracker.this.loading = false;
-    };
+    private Runnable loadedRunnable;
     private boolean loading = true;
 
     public BlockSystemPlayerTracker(BlockSystemChunkTracker trackManager, int chunkX, int chunkZ) {
@@ -53,6 +50,10 @@ public class BlockSystemPlayerTracker {
         this.chunkPosition = new ChunkPos(chunkX, chunkZ);
         this.blockSystem = trackManager.getBlockSystem();
         this.blockSystem.getChunkProvider().loadChunk(chunkX, chunkZ, this.loadedRunnable);
+        this.loadedRunnable = () -> {
+            BlockSystemPlayerTracker.this.providingChunk = (BlockSystemChunk) BlockSystemPlayerTracker.this.blockSystem.getChunkProvider().loadChunk(BlockSystemPlayerTracker.this.chunkPosition.chunkXPos, BlockSystemPlayerTracker.this.chunkPosition.chunkZPos);
+            BlockSystemPlayerTracker.this.loading = false;
+        };
     }
 
     public ChunkPos getChunkPosition() {

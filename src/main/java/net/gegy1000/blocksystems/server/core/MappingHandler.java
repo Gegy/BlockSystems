@@ -5,13 +5,16 @@ import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.google.common.io.Closeables;
+
 public class MappingHandler {
     private static final Map<String, Map<String, String>> FIELD_MAPPINGS = new HashMap<>();
     private static final Map<String, Map<String, String>> METHOD_MAPPINGS = new HashMap<>();
 
     public static void loadMappings() {
+        BufferedReader in = null;
         try {
-            BufferedReader in = new BufferedReader(new InputStreamReader(MappingHandler.class.getResourceAsStream("/blocksystems.mappings")));
+            in = new BufferedReader(new InputStreamReader(MappingHandler.class.getResourceAsStream("/blocksystems.mappings")));
             String line;
             while ((line = in.readLine()) != null) {
                 int splitIndex = (line.contains("(") ? line.split("\\(")[0] : line).lastIndexOf('/');
@@ -34,10 +37,11 @@ public class MappingHandler {
                     classMappings.put(name, mapping);
                 }
             }
-            in.close();
         } catch (Exception e) {
             System.err.println("Failed to load BlockSystems ASM Mappings!");
             e.printStackTrace();
+        } finally {
+            Closeables.closeQuietly(in);
         }
     }
 
