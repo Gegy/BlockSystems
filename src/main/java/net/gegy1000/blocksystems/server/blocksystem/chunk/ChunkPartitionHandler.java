@@ -1,5 +1,6 @@
 package net.gegy1000.blocksystems.server.blocksystem.chunk;
 
+import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
 import net.gegy1000.blocksystems.server.world.data.BlockSystemSavedData;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
@@ -7,13 +8,13 @@ import net.minecraft.world.World;
 import java.util.Random;
 
 public class ChunkPartitionHandler {
-    public static BlockPos generateValidPartitionPosition(World world) {
+    public static BlockPos generateValidPartitionPosition(World world, BlockSystem blockSystem) {
         BlockSystemSavedData data = BlockSystemSavedData.get(world);
         int attempts = 0;
         while (attempts < 100) {
             BlockPos position = ChunkPartitionHandler.generatePartitionPosition();
             if (!data.hasPartition(position)) {
-                data.addPartition(position);
+                data.addPartition(position, blockSystem);
                 return position;
             }
             attempts++;

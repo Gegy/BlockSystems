@@ -47,7 +47,6 @@ public class ServerEventHandler {
         if (entity instanceof EntityPlayer) {
             EntityPlayer player = (EntityPlayer) entity;
             ServerBlockSystemHandler handler = BlockSystems.PROXY.getBlockSystemHandler(world);
-            Map<Integer, BlockSystem> blockSystems = handler.getBlockSystems();
             handler.addPlayer(player);
         }
     }

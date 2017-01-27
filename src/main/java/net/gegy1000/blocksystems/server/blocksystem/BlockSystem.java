@@ -328,9 +328,7 @@ public abstract class BlockSystem extends World {
     public boolean spawnEntity(Entity entity) {
         entity.world = this.mainWorld;
         Point3d transformedPosition = this.getTransformedPosition(new Point3d(entity.posX, entity.posY, entity.posZ));
-        entity.posX = transformedPosition.getX();
-        entity.posY = transformedPosition.getY();
-        entity.posZ = transformedPosition.getZ();
+        entity.setPosition(transformedPosition.x, transformedPosition.y, transformedPosition.z);
         return this.mainWorld.spawnEntity(entity);
     }
 

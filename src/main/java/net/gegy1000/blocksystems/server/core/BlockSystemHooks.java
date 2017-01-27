@@ -5,9 +5,11 @@ import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
 import net.gegy1000.blocksystems.server.blocksystem.ServerBlockSystemHandler;
 import net.gegy1000.blocksystems.server.world.BlockSystemWorldAccess;
 import net.gegy1000.blocksystems.server.world.HookedChunk;
+import net.gegy1000.blocksystems.server.world.data.BlockSystemSavedData;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.particle.Particle;
 import net.minecraft.client.renderer.chunk.ChunkCompileTaskGenerator;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.RayTraceResult;
@@ -104,5 +106,30 @@ public class BlockSystemHooks {
             return blockSystem.getUntransformedPosition(pos);
         }
         return pos;
+    }
+
+    public static World setWorld(TileEntity entity, World world) {
+        BlockPos pos = entity.getPos();
+        if (pos != BlockPos.ORIGIN) {
+            return BlockSystemHooks.getBlockSystemWorld(world, pos);
+        }
+        return world;
+    }
+
+    public static BlockPos setPos(TileEntity entity, BlockPos pos) {
+        World world = entity.getWorld();
+        if (world != null) {
+            entity.setWorld(BlockSystemHooks.getBlockSystemWorld(world, pos));
+        }
+        return pos;
+    }
+
+    private static World getBlockSystemWorld(World world, BlockPos pos) {
+        BlockSystemSavedData data = BlockSystemSavedData.get(world, false);
+        BlockSystem blockSystem = data.getBlockSystem(pos);
+        if (blockSystem != null) {
+            return blockSystem;
+        }
+        return world;
     }
 }

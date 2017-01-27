@@ -67,7 +67,7 @@ public class BlockSystemChunk extends Chunk {
         this.blockCount = 0;
         if (compound.hasKey("PartitionPosition")) {
             this.partitionPosition = BlockPos.fromLong(compound.getLong("PartitionPosition"));
-            BlockSystemSavedData.addPartitionToQueue(this.mainWorld, this.partitionPosition);
+            BlockSystemSavedData.queuePartition(this.mainWorld, this.blockSystem, this.partitionPosition);
             Chunk chunk = BlockSystemWorldAccess.getChunk(this.mainWorld, this.partitionPosition.getX(), this.partitionPosition.getZ());
             BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
             BlockPos.MutableBlockPos worldPos = new BlockPos.MutableBlockPos();
@@ -139,7 +139,7 @@ public class BlockSystemChunk extends Chunk {
 
     private void updatePartition() {
         if (this.partitionPosition == null && !this.isEmpty()) {
-            this.partitionPosition = ChunkPartitionHandler.generateValidPartitionPosition(this.mainWorld);
+            this.partitionPosition = ChunkPartitionHandler.generateValidPartitionPosition(this.mainWorld, this.blockSystem);
             this.clearPartition();
         } else if (this.partitionPosition != null && this.isEmpty()) {
             this.clearPartition();

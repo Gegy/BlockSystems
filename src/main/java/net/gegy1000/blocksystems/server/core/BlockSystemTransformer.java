@@ -6,6 +6,7 @@ import net.gegy1000.blocksystems.server.transformer.ChunkTransformer;
 import net.gegy1000.blocksystems.server.transformer.EntityRendererTransformer;
 import net.gegy1000.blocksystems.server.transformer.EntityTransformer;
 import net.gegy1000.blocksystems.server.transformer.ParticleManagerTransformer;
+import net.gegy1000.blocksystems.server.transformer.TileEntityTransformer;
 import net.gegy1000.blocksystems.server.transformer.WorldTransformer;
 import net.minecraft.launchwrapper.IClassTransformer;
 import net.minecraftforge.fml.relauncher.FMLRelaunchLog;
@@ -91,6 +92,7 @@ public class BlockSystemTransformer implements IClassTransformer {
         this.transformers.add(new ChunkTransformer());
         this.transformers.add(new EntityRendererTransformer());
         this.transformers.add(new ChunkRenderWorkerTransformer());
+        this.transformers.add(new TileEntityTransformer());
     }
 
     private void saveBytecode(String name, ClassWriter classWriter) {
