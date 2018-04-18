@@ -6,22 +6,30 @@ import net.gegy1000.blocksystems.server.api.DefaultRenderedItem;
 import net.gegy1000.blocksystems.server.block.BlockRegistry;
 import net.gegy1000.blocksystems.server.entity.BlockSystemControlEntity;
 import net.minecraft.block.Block;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.block.model.ModelResourceLocation;
 import net.minecraft.item.Item;
+import net.minecraftforge.client.event.ModelRegistryEvent;
 import net.minecraftforge.client.model.ModelLoader;
 import net.minecraftforge.fml.client.registry.RenderingRegistry;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
 
+@SideOnly(Side.CLIENT)
+@Mod.EventBusSubscriber(modid = BlockSystems.MODID, value = Side.CLIENT)
 public class RenderRegistry {
-    private static final Minecraft MC = Minecraft.getMinecraft();
+    @SubscribeEvent
+    public static void onModelRegistry(ModelRegistryEvent event) {
+        for (Block block : BlockRegistry.getRegisteredBlocks()) {
+            if (block instanceof DefaultRenderedItem) {
+                RenderRegistry.registerRenderer(block, ((DefaultRenderedItem) block).getResource(block.getRegistryName()));
+            }
+        }
+    }
 
     public static void onPreInit() {
         RenderingRegistry.registerEntityRenderingHandler(BlockSystemControlEntity.class, BlockSystemControlRenderer::new);
-        for (Block block : BlockRegistry.BLOCKS) {
-            if (block instanceof DefaultRenderedItem) {
-                RenderRegistry.registerRenderer(block, ((DefaultRenderedItem) block).getResource(block.getUnlocalizedName().substring("tile.".length())));
-            }
-        }
     }
 
     public static void onInit() {

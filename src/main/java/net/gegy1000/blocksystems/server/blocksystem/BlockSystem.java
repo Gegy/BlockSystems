@@ -84,7 +84,7 @@ public abstract class BlockSystem extends World {
     protected Map<ChunkPos, BlockSystemChunk> savedChunks = new HashMap<>();
 
     public BlockSystem(World mainWorld, int id, MinecraftServer server) {
-        super(new BlockSystemSaveHandler(), mainWorld.getWorldInfo(), mainWorld.provider, mainWorld.theProfiler, mainWorld.isRemote);
+        super(new BlockSystemSaveHandler(), mainWorld.getWorldInfo(), mainWorld.provider, mainWorld.profiler, mainWorld.isRemote);
         this.mainWorld = mainWorld;
         this.id = id;
         this.chunkProvider = this.createChunkProvider();
@@ -128,7 +128,7 @@ public abstract class BlockSystem extends World {
         for (int i = 0; i < chunksList.tagCount(); i++) {
             NBTTagCompound chunkTag = chunksList.getCompoundTagAt(i);
             ChunkPos pos = new ChunkPos(chunkTag.getInteger("x"), chunkTag.getInteger("z"));
-            BlockSystemChunk chunk = new BlockSystemChunk(this, pos.chunkXPos, pos.chunkZPos);
+            BlockSystemChunk chunk = new BlockSystemChunk(this, pos.x, pos.z);
             chunk.deserialize(chunkTag);
             this.savedChunks.put(pos, chunk);
         }
@@ -149,8 +149,8 @@ public abstract class BlockSystem extends World {
             if (!chunk.isEmpty()) {
                 ChunkPos pos = entry.getKey();
                 NBTTagCompound chunkTag = new NBTTagCompound();
-                chunkTag.setInteger("x", pos.chunkXPos);
-                chunkTag.setInteger("z", pos.chunkZPos);
+                chunkTag.setInteger("x", pos.x);
+                chunkTag.setInteger("z", pos.z);
                 chunk.serialize(chunkTag);
                 chunksList.appendTag(chunkTag);
             }
@@ -166,7 +166,7 @@ public abstract class BlockSystem extends World {
     }
 
     public Vec3d getTransformedPosition(Vec3d position) {
-        Point3d point = new Point3d(position.xCoord - 0.5, position.yCoord, position.zCoord - 0.5);
+        Point3d point = new Point3d(position.x - 0.5, position.y, position.z - 0.5);
         this.transformMatrix.transform(point);
         return new Vec3d(point.getX(), point.getY(), point.getZ());
     }
@@ -183,7 +183,7 @@ public abstract class BlockSystem extends World {
     }
 
     public Vec3d getUntransformedPosition(Vec3d position) {
-        Point3d point = new Point3d(position.xCoord, position.yCoord, position.zCoord);
+        Point3d point = new Point3d(position.x, position.y, position.z);
         this.untransformMatrix.transform(point);
         return new Vec3d(point.getX() + 0.5, point.getY(), point.getZ() + 0.5);
     }
@@ -194,7 +194,7 @@ public abstract class BlockSystem extends World {
     }
 
     public Vec3d getTransformedVector(Vec3d vec) {
-        Vector3d vector = new Vector3d(vec.xCoord, vec.yCoord, vec.zCoord);
+        Vector3d vector = new Vector3d(vec.x, vec.y, vec.z);
         this.transformMatrix.transform(vector);
         return new Vec3d(vector.getX(), vector.getY(), vector.getZ());
     }
@@ -340,9 +340,9 @@ public abstract class BlockSystem extends World {
         posZ = transformed.getZ();
         if (particleType != EnumParticleTypes.REDSTONE) {
             Vec3d transformedVelocity = this.getTransformedVector(new Vec3d(xSpeed, ySpeed, zSpeed));
-            xSpeed = transformedVelocity.xCoord;
-            ySpeed = transformedVelocity.yCoord;
-            zSpeed = transformedVelocity.zCoord;
+            xSpeed = transformedVelocity.x;
+            ySpeed = transformedVelocity.y;
+            zSpeed = transformedVelocity.z;
         }
         super.spawnParticle(particleType, posX, posY, posZ, xSpeed, ySpeed, zSpeed, parameters);
     }
@@ -356,9 +356,9 @@ public abstract class BlockSystem extends World {
         posZ = transformed.getZ();
         if (particleType != EnumParticleTypes.REDSTONE) {
             Vec3d transformedVelocity = this.getTransformedVector(new Vec3d(xSpeed, ySpeed, zSpeed));
-            xSpeed = transformedVelocity.xCoord;
-            ySpeed = transformedVelocity.yCoord;
-            zSpeed = transformedVelocity.zCoord;
+            xSpeed = transformedVelocity.x;
+            ySpeed = transformedVelocity.y;
+            zSpeed = transformedVelocity.z;
         }
         super.spawnParticle(particleType, ignoreRange, posX, posY, posZ, xSpeed, ySpeed, zSpeed, parameters);
     }
@@ -406,16 +406,16 @@ public abstract class BlockSystem extends World {
 
     @Override
     public RayTraceResult rayTraceBlocks(Vec3d start, Vec3d end, boolean traceLiquid, boolean ignoreBlockWithoutBoundingBox, boolean returnLastUncollidableBlock) {
-        if (!Double.isNaN(start.xCoord) && !Double.isNaN(start.yCoord) && !Double.isNaN(start.zCoord)) {
-            if (!Double.isNaN(end.xCoord) && !Double.isNaN(end.yCoord) && !Double.isNaN(end.zCoord)) {
+        if (!Double.isNaN(start.x) && !Double.isNaN(start.y) && !Double.isNaN(start.z)) {
+            if (!Double.isNaN(end.x) && !Double.isNaN(end.y) && !Double.isNaN(end.z)) {
                 start = this.getUntransformedPosition(start);
                 end = this.getUntransformedPosition(end);
-                int endX = MathHelper.floor(end.xCoord);
-                int endY = MathHelper.floor(end.yCoord);
-                int endZ = MathHelper.floor(end.zCoord);
-                int traceX = MathHelper.floor(start.xCoord);
-                int traceY = MathHelper.floor(start.yCoord);
-                int traceZ = MathHelper.floor(start.zCoord);
+                int endX = MathHelper.floor(end.x);
+                int endY = MathHelper.floor(end.y);
+                int endZ = MathHelper.floor(end.z);
+                int traceX = MathHelper.floor(start.x);
+                int traceY = MathHelper.floor(start.y);
+                int traceZ = MathHelper.floor(start.z);
                 BlockPos tracePos = new BlockPos(traceX, traceY, traceZ);
                 IBlockState startState = this.getBlockState(tracePos);
                 Block startBlock = startState.getBlock();
@@ -428,7 +428,7 @@ public abstract class BlockSystem extends World {
                 RayTraceResult result = null;
                 int ray = 200;
                 while (ray-- >= 0) {
-                    if (Double.isNaN(start.xCoord) || Double.isNaN(start.yCoord) || Double.isNaN(start.zCoord)) {
+                    if (Double.isNaN(start.x) || Double.isNaN(start.y) || Double.isNaN(start.z)) {
                         return null;
                     }
                     if (traceX == endX && traceY == endY && traceZ == endZ) {
@@ -464,17 +464,17 @@ public abstract class BlockSystem extends World {
                     double deltaX = 999.0;
                     double deltaY = 999.0;
                     double deltaZ = 999.0;
-                    double totalDeltaX = end.xCoord - start.xCoord;
-                    double totalDeltaY = end.yCoord - start.yCoord;
-                    double totalDeltaZ = end.zCoord - start.zCoord;
+                    double totalDeltaX = end.x - start.x;
+                    double totalDeltaY = end.y - start.y;
+                    double totalDeltaZ = end.z - start.z;
                     if (reachedX) {
-                        deltaX = (targetX - start.xCoord) / totalDeltaX;
+                        deltaX = (targetX - start.x) / totalDeltaX;
                     }
                     if (reachedY) {
-                        deltaY = (targetY - start.yCoord) / totalDeltaY;
+                        deltaY = (targetY - start.y) / totalDeltaY;
                     }
                     if (reachedZ) {
-                        deltaZ = (targetZ - start.zCoord) / totalDeltaZ;
+                        deltaZ = (targetZ - start.z) / totalDeltaZ;
                     }
                     if (deltaX == -0.0) {
                         deltaX = -1.0E-4D;
@@ -488,17 +488,17 @@ public abstract class BlockSystem extends World {
                     EnumFacing sideHit;
                     if (deltaX < deltaY && deltaX < deltaZ) {
                         sideHit = endX > traceX ? EnumFacing.WEST : EnumFacing.EAST;
-                        start = new Vec3d(targetX, start.yCoord + totalDeltaY * deltaX, start.zCoord + totalDeltaZ * deltaX);
+                        start = new Vec3d(targetX, start.y + totalDeltaY * deltaX, start.z + totalDeltaZ * deltaX);
                     } else if (deltaY < deltaZ) {
                         sideHit = endY > traceY ? EnumFacing.DOWN : EnumFacing.UP;
-                        start = new Vec3d(start.xCoord + totalDeltaX * deltaY, targetY, start.zCoord + totalDeltaZ * deltaY);
+                        start = new Vec3d(start.x + totalDeltaX * deltaY, targetY, start.z + totalDeltaZ * deltaY);
                     } else {
                         sideHit = endZ > traceZ ? EnumFacing.NORTH : EnumFacing.SOUTH;
-                        start = new Vec3d(start.xCoord + totalDeltaX * deltaZ, start.yCoord + totalDeltaY * deltaZ, targetZ);
+                        start = new Vec3d(start.x + totalDeltaX * deltaZ, start.y + totalDeltaY * deltaZ, targetZ);
                     }
-                    traceX = MathHelper.floor(start.xCoord) - (sideHit == EnumFacing.EAST ? 1 : 0);
-                    traceY = MathHelper.floor(start.yCoord) - (sideHit == EnumFacing.UP ? 1 : 0);
-                    traceZ = MathHelper.floor(start.zCoord) - (sideHit == EnumFacing.SOUTH ? 1 : 0);
+                    traceX = MathHelper.floor(start.x) - (sideHit == EnumFacing.EAST ? 1 : 0);
+                    traceY = MathHelper.floor(start.y) - (sideHit == EnumFacing.UP ? 1 : 0);
+                    traceZ = MathHelper.floor(start.z) - (sideHit == EnumFacing.SOUTH ? 1 : 0);
                     tracePos = new BlockPos(traceX, traceY, traceZ);
                     IBlockState traceState = this.getBlockState(tracePos);
                     Block traceBlock = traceState.getBlock();
@@ -559,11 +559,11 @@ public abstract class BlockSystem extends World {
     }
 
     public void addSavedChunk(BlockSystemChunk chunk) {
-        this.savedChunks.put(new ChunkPos(chunk.xPosition, chunk.zPosition), chunk);
+        this.savedChunks.put(new ChunkPos(chunk.x, chunk.z), chunk);
     }
 
     public void removeSavedChunk(BlockSystemChunk chunk) {
-        this.removeSavedChunk(new ChunkPos(chunk.xPosition, chunk.zPosition));
+        this.removeSavedChunk(new ChunkPos(chunk.x, chunk.z));
     }
 
     public void removeSavedChunk(ChunkPos pos) {
@@ -588,8 +588,9 @@ public abstract class BlockSystem extends World {
         return this.savedChunks.get(pos);
     }
 
+    @Override
     public boolean isValid(BlockPos pos) {
-        return this.maximumBounds.expandXyz(1).isVecInside(new Vec3d(pos.getX(), pos.getY(), pos.getZ())) && pos.getY() >= 0 && pos.getY() < 256;
+        return this.maximumBounds.grow(1).contains(new Vec3d(pos.getX(), pos.getY(), pos.getZ())) && pos.getY() >= 0 && pos.getY() < 256;
     }
 
     public boolean isRemoved() {
@@ -616,7 +617,7 @@ public abstract class BlockSystem extends World {
     }
 
     public boolean intersects(AxisAlignedBB bounds) {
-        return this.rotatedBounds.aabb().intersectsWith(bounds);
+        return this.rotatedBounds.aabb().intersects(bounds);
     }
 
     public RotatedAABB getRotatedBounds() {

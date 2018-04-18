@@ -1,6 +1,12 @@
 package net.gegy1000.blocksystems.client;
 
 import net.gegy1000.blocksystems.client.blocksystem.BlockSystemClient;
+import net.gegy1000.blocksystems.client.blocksystem.ClientBlockSystemHandler;
+import net.gegy1000.blocksystems.client.render.RenderRegistry;
+import net.gegy1000.blocksystems.server.ServerProxy;
+import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
+import net.gegy1000.blocksystems.server.blocksystem.ServerBlockSystemHandler;
+import net.gegy1000.blocksystems.server.message.BaseMessage;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.ISound;
@@ -12,14 +18,7 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumHand;
 import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.world.World;
-import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.network.simpleimpl.MessageContext;
-import net.gegy1000.blocksystems.client.blocksystem.ClientBlockSystemHandler;
-import net.gegy1000.blocksystems.client.render.RenderRegistry;
-import net.gegy1000.blocksystems.server.ServerProxy;
-import net.gegy1000.blocksystems.server.blocksystem.ServerBlockSystemHandler;
-import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
-import net.gegy1000.blocksystems.server.message.BaseMessage;
 
 public class ClientProxy extends ServerProxy {
     public static final Minecraft MINECRAFT = Minecraft.getMinecraft();
@@ -29,7 +28,6 @@ public class ClientProxy extends ServerProxy {
     public void onPreInit() {
         super.onPreInit();
         RenderRegistry.onPreInit();
-        MinecraftForge.EVENT_BUS.register(new ClientEventHandler());
     }
 
     @Override

@@ -25,7 +25,7 @@ public class EmptyBlockSystemChunk extends ClientBlockSystemChunk {
 
     @Override
     public boolean isAtLocation(int x, int z) {
-        return x == this.xPosition && z == this.zPosition;
+        return x == this.x && z == this.z;
     }
 
     @Override
@@ -82,6 +82,7 @@ public class EmptyBlockSystemChunk extends ClientBlockSystemChunk {
         return false;
     }
 
+    @Override
     @Nullable
     public TileEntity getTileEntity(BlockPos pos, Chunk.EnumCreateEntityType type) {
         return null;
@@ -100,15 +101,15 @@ public class EmptyBlockSystemChunk extends ClientBlockSystemChunk {
     }
 
     @Override
-    public void onChunkLoad() {
+    public void onLoad() {
     }
 
     @Override
-    public void onChunkUnload() {
+    public void onUnload() {
     }
 
     @Override
-    public void setChunkModified() {
+    public void markDirty() {
     }
 
     @Override
@@ -116,7 +117,7 @@ public class EmptyBlockSystemChunk extends ClientBlockSystemChunk {
     }
 
     @Override
-    public <T extends Entity> void getEntitiesOfTypeWithinAAAB(Class<? extends T> entityClass, AxisAlignedBB aabb, List<T> entities, Predicate<? super T> selector) {
+    public <T extends Entity> void getEntitiesOfTypeWithinAABB(Class<? extends T> entityClass, AxisAlignedBB aabb, List<T> entities, Predicate<? super T> selector) {
     }
 
     @Override
@@ -126,7 +127,7 @@ public class EmptyBlockSystemChunk extends ClientBlockSystemChunk {
 
     @Override
     public Random getRandomWithSeed(long seed) {
-        return new Random(this.getWorld().getSeed() + (long) (this.xPosition * this.xPosition * 4987142) + (long) (this.xPosition * 5947611) + (long) (this.zPosition * this.zPosition) * 4392871L + (long) (this.zPosition * 389711) ^ seed);
+        return new Random(this.getWorld().getSeed() + (long) (this.x * this.z * 4987142) + (long) (this.x * 5947611) + (long) (this.z * this.z) * 4392871L + (long) (this.z * 389711) ^ seed);
     }
 
     @Override
@@ -135,7 +136,7 @@ public class EmptyBlockSystemChunk extends ClientBlockSystemChunk {
     }
 
     @Override
-    public boolean getAreLevelsEmpty(int startY, int endY) {
+    public boolean isEmptyBetween(int startY, int endY) {
         return true;
     }
 }

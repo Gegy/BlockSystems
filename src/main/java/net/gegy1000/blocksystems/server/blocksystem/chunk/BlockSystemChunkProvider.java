@@ -23,4 +23,9 @@ public class BlockSystemChunkProvider implements IChunkProvider {
     public String makeString() {
         return null;
     }
+
+    @Override
+    public boolean isChunkGeneratedAt(int x, int z) {
+        return false;
+    }
 }

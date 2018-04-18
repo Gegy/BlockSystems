@@ -27,7 +27,7 @@ public class MultiBlockUpdateMessage extends BaseMessage<MultiBlockUpdateMessage
 
     public MultiBlockUpdateMessage(BlockSystem blockSystem, BlockSystemChunk chunk, int updateCount, short[] updates) {
         this.blockSystem = blockSystem.getID();
-        this.pos = new ChunkPos(chunk.xPosition, chunk.zPosition);
+        this.pos = new ChunkPos(chunk.x, chunk.z);
         this.updates = new BlockUpdateData[updateCount];
         for (int i = 0; i < this.updates.length; ++i) {
             this.updates[i] = new BlockUpdateData(updates[i], chunk);
@@ -37,8 +37,8 @@ public class MultiBlockUpdateMessage extends BaseMessage<MultiBlockUpdateMessage
     @Override
     public void serialize(ByteBuf buf) {
         buf.writeInt(this.blockSystem);
-        buf.writeInt(this.pos.chunkXPos);
-        buf.writeInt(this.pos.chunkZPos);
+        buf.writeInt(this.pos.x);
+        buf.writeInt(this.pos.z);
         buf.writeInt(this.updates.length);
         for (BlockUpdateData update : this.updates) {
             buf.writeShort(update.getOffset());

@@ -18,15 +18,17 @@ import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.world.WorldEvent;
+import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent.Phase;
 
 import java.util.Map;
 
+@Mod.EventBusSubscriber(modid = BlockSystems.MODID)
 public class ServerEventHandler {
     @SubscribeEvent
-    public void onWorldTick(TickEvent.WorldTickEvent event) {
+    public static void onWorldTick(TickEvent.WorldTickEvent event) {
         if (event.phase == Phase.START) {
             World world = event.world;
             if (!BlockSystems.PROXY.isPaused(world)) {
@@ -43,7 +45,7 @@ public class ServerEventHandler {
     }
 
     @SubscribeEvent
-    public void onEntityJoinWorld(EntityJoinWorldEvent event) {
+    public static void onEntityJoinWorld(EntityJoinWorldEvent event) {
         World world = event.getWorld();
         Entity entity = event.getEntity();
         if (entity instanceof EntityPlayer) {
@@ -72,7 +74,7 @@ public class ServerEventHandler {
     }
 
     @SubscribeEvent
-    public void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
+    public static void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
         EntityPlayer player = event.getEntityPlayer();
         EnumHand hand = event.getHand();
         ServerBlockSystemHandler structureHandler = BlockSystems.PROXY.getBlockSystemHandler(event.getWorld());
@@ -82,7 +84,7 @@ public class ServerEventHandler {
     }
 
     @SubscribeEvent
-    public void onWorldLoad(WorldEvent.Load event) {
+    public static void onWorldLoad(WorldEvent.Load event) {
         World world = event.getWorld();
         BlockSystemSavedData.get(world);
         if (world instanceof WorldServer) {
@@ -92,7 +94,7 @@ public class ServerEventHandler {
     }
 
     @SubscribeEvent
-    public void onWorldUnload(WorldEvent.Unload event) {
+    public static void onWorldUnload(WorldEvent.Unload event) {
         World world = event.getWorld();
         BlockSystemSavedData.get(world);
         if (world instanceof WorldServer) {

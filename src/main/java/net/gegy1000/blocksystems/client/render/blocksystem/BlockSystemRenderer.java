@@ -19,6 +19,7 @@ import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.BlockRendererDispatcher;
+import net.minecraft.client.renderer.BufferBuilder;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.RenderGlobal;
@@ -27,7 +28,6 @@ import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.chunk.ChunkRenderDispatcher;
 import net.minecraft.client.renderer.chunk.ListedRenderChunk;
 import net.minecraft.client.renderer.chunk.RenderChunk;
-import net.minecraft.client.renderer.chunk.VisGraph;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.client.renderer.texture.TextureMap;
@@ -190,7 +190,7 @@ public class BlockSystemRenderer extends RenderGlobal implements IWorldEventList
 
         if (breaking.size() > 0) {
             Tessellator tessellator = Tessellator.getInstance();
-            net.minecraft.client.renderer.VertexBuffer builder = tessellator.getBuffer();
+            BufferBuilder builder = tessellator.getBuffer();
             GlStateManager.enableBlend();
             GlStateManager.depthMask(false);
             TEXTURE_MANAGER.getTexture(TextureMap.LOCATION_BLOCKS_TEXTURE).setBlurMipmap(false, false);
@@ -249,7 +249,7 @@ public class BlockSystemRenderer extends RenderGlobal implements IWorldEventList
                 GlStateManager.depthMask(false);
                 IBlockState state = this.blockSystem.getBlockState(pos);
                 if (state.getMaterial() != Material.AIR) {
-                    RenderGlobal.drawSelectionBoundingBox(state.getSelectedBoundingBox(this.blockSystem, pos).expandXyz(0.002), 0.0F, 0.0F, 0.0F, 0.4F);
+                    RenderGlobal.drawSelectionBoundingBox(state.getSelectedBoundingBox(this.blockSystem, pos).grow(0.002), 0.0F, 0.0F, 0.0F, 0.4F);
                 }
                 GlStateManager.depthMask(true);
                 GlStateManager.enableTexture2D();
@@ -271,10 +271,10 @@ public class BlockSystemRenderer extends RenderGlobal implements IWorldEventList
                     BlockPos pos = blockEntity.getPos();
                     BlockSystemChunk chunk = this.blockSystem.getChunkFromPartition(pos);
                     if (chunk != null) {
-                        ChunkPos chunkPos = chunk.getChunkCoordIntPair();
+                        ChunkPos chunkPos = chunk.getPos();
                         int x = chunkPos.getXStart() + (pos.getX() & 0xF);
                         int z = chunkPos.getZStart() + (pos.getZ() & 0xF);
-                        TileEntityRendererDispatcher.instance.renderTileEntityAt(blockEntity, x, pos.getY(), z, partialTicks, -1);
+                        TileEntityRendererDispatcher.instance.render(blockEntity, x, pos.getY(), z, partialTicks, -1);
                     }
 //                    }
                 }
@@ -284,7 +284,7 @@ public class BlockSystemRenderer extends RenderGlobal implements IWorldEventList
             for (TileEntity blockEntity : this.blockEntities) {
 //                if (!camera.isBoundingBoxInFrustum(blockEntity.getRenderBoundingBox())) {
                 BlockPos pos = blockEntity.getPos();
-                TileEntityRendererDispatcher.instance.renderTileEntityAt(blockEntity, pos.getX(), pos.getY(), pos.getZ(), partialTicks, -1);
+                TileEntityRendererDispatcher.instance.render(blockEntity, pos.getX(), pos.getY(), pos.getZ(), partialTicks, -1);
 //                }
             }
         }
@@ -379,11 +379,11 @@ public class BlockSystemRenderer extends RenderGlobal implements IWorldEventList
         this.queuedChunkUpdates = Sets.newLinkedHashSet();
         for (ChunkRenderInformation renderInformation : this.chunkRenderInformation) {
             RenderChunk chunk = renderInformation.chunk;
-            if (chunk.isNeedsUpdate() || newQueuedChunkUpdates.contains(chunk)) {
+            if (chunk.needsUpdate() || newQueuedChunkUpdates.contains(chunk)) {
                 this.displayListEntitiesDirty = true;
                 BlockPos centerPos = chunk.getPosition().add(8, 8, 8);
                 boolean distance = centerPos.distanceSq(eyePosition) < 768.0D;
-                if (!chunk.isNeedsUpdateCustom() && !distance) {
+                if (!chunk.needsImmediateUpdate() && !distance) {
                     this.queuedChunkUpdates.add(chunk);
                 } else {
                     this.dispatcher.updateChunkNow(chunk);
@@ -485,12 +485,6 @@ public class BlockSystemRenderer extends RenderGlobal implements IWorldEventList
         this.queueRenderUpdate(x, 0, z, x + 16, 256, z + 16, true);
     }
 
-    public void queueChunkRenderUpdate(int xPosition, int zPosition) {
-        int x = xPosition << 4;
-        int z = zPosition << 4;
-        this.queueRenderUpdate(x, 0, z, x + 16, 256, z + 16, false);
-    }
-
     @Override
     public void updateChunks(long finishTimeNano) {
         this.displayListEntitiesDirty |= this.dispatcher.runChunkUploads(finishTimeNano);
@@ -499,7 +493,7 @@ public class BlockSystemRenderer extends RenderGlobal implements IWorldEventList
             while (iterator.hasNext()) {
                 RenderChunk chunk = iterator.next();
                 boolean updated;
-                if (chunk.isNeedsUpdateCustom()) {
+                if (chunk.needsImmediateUpdate()) {
                     updated = this.dispatcher.updateChunkNow(chunk);
                 } else {
                     updated = this.dispatcher.updateChunkLater(chunk);
@@ -529,18 +523,6 @@ public class BlockSystemRenderer extends RenderGlobal implements IWorldEventList
         }
     }
 
-    private Set<EnumFacing> getVisibleFacings(BlockPos pos) {
-        VisGraph visibility = new VisGraph();
-        BlockPos cornerPos = new BlockPos(pos.getX() >> 4 << 4, pos.getY() >> 4 << 4, pos.getZ() >> 4 << 4);
-        Chunk chunk = this.blockSystem.getChunkFromBlockCoords(cornerPos);
-        for (BlockPos.MutableBlockPos blockPos : BlockPos.getAllInBoxMutable(cornerPos, cornerPos.add(15, 15, 15))) {
-            if (chunk.getBlockState(blockPos).isOpaqueCube()) {
-                visibility.setOpaqueCube(blockPos);
-            }
-        }
-        return visibility.getVisibleFacings(pos);
-    }
-
     private RenderChunk getOffsetChunk(BlockPos pos, RenderChunk chunk, EnumFacing facing) {
         BlockPos offset = chunk.getBlockPosOffset16(facing);
         if (!(MathHelper.abs(pos.getX() - offset.getX()) > this.viewDistance * 16) && offset.getY() >= 0 && offset.getY() < 256) {
@@ -562,7 +544,7 @@ public class BlockSystemRenderer extends RenderGlobal implements IWorldEventList
         float xzScale = -MathHelper.cos(-pitch * 0.017453292F);
         float y = MathHelper.sin(-pitch * 0.017453292F);
         Vec3d vec = this.blockSystem.getTransformedVector(new Vec3d(x * xzScale, y, z * xzScale));
-        return new Vector3f((float) vec.xCoord, (float) vec.yCoord, (float) vec.zCoord);
+        return new Vector3f((float) vec.x, (float) vec.y, (float) vec.z);
     }
 
     private Point3d getUntransformedPosition(Entity entity) {

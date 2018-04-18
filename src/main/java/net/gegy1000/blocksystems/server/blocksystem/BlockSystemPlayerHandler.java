@@ -136,11 +136,11 @@ public class BlockSystemPlayerHandler {
         }
         if (!this.player.capabilities.isCreativeMode) {
             ItemStack heldItem = this.player.getHeldItemMainhand();
-            if (heldItem != null) {
+            if (!heldItem.isEmpty()) {
                 heldItem.onBlockDestroyed(this.blockSystem, state, pos, this.player);
-                if (heldItem.stackSize <= 0) {
+                if (heldItem.isEmpty()) {
                     ForgeEventFactory.onPlayerDestroyItem(this.player, heldItem, EnumHand.MAIN_HAND);
-                    this.player.setHeldItem(EnumHand.MAIN_HAND, null);
+                    this.player.setHeldItem(EnumHand.MAIN_HAND, ItemStack.EMPTY);
                 }
             }
             block.harvestBlock(this.blockSystem, this.player, pos, state, this.blockSystem.getTileEntity(pos), heldItem);
@@ -158,34 +158,34 @@ public class BlockSystemPlayerHandler {
             if (this.blockSystem.isValid(pos)) {
                 Vec3d hitVec = this.mouseOver.hitVec;
                 IBlockState state = this.blockSystem.getBlockState(pos);
-                float hitX = (float) (hitVec.xCoord - pos.getX());
-                float hitY = (float) (hitVec.yCoord - pos.getY());
-                float hitZ = (float) (hitVec.zCoord - pos.getZ());
+                float hitX = (float) (hitVec.x - pos.getX());
+                float hitY = (float) (hitVec.y - pos.getY());
+                float hitZ = (float) (hitVec.z - pos.getZ());
                 ItemStack heldItem = this.player.getHeldItem(hand);
                 BlockSystems.NETWORK_WRAPPER.sendToServer(new InteractBlockMessage(this.blockSystem, pos, this.mouseOver.sideHit, hitX, hitY, hitZ, hand));
-                if (state.getBlock().onBlockActivated(this.blockSystem, pos, state, this.player, hand, heldItem, this.mouseOver.sideHit, hitX, hitY, hitZ)) {
+                if (state.getBlock().onBlockActivated(this.blockSystem, pos, state, this.player, hand, this.mouseOver.sideHit, hitX, hitY, hitZ)) {
                     this.player.swingArm(hand);
                     return true;
-                } else if (heldItem != null) {
+                } else if (!heldItem.isEmpty()) {
                     float rotationYaw = this.player.rotationYaw;
                     float rotationPitch = this.player.rotationPitch;
                     Vec3d vec = new Vec3d(rotationPitch, rotationYaw, 0.0F);
                     vec.normalize();
                     Vec3d actualRotation = this.blockSystem.getTransformedVector(vec);
-                    this.player.rotationPitch = (float) actualRotation.xCoord;
-                    this.player.rotationYaw = (float) actualRotation.yCoord;
-                    int size = heldItem.stackSize;
+                    this.player.rotationPitch = (float) actualRotation.x;
+                    this.player.rotationYaw = (float) actualRotation.y;
+                    int originalCount = heldItem.getCount();
                     EnumActionResult actionResult = heldItem.onItemUse(this.player, this.blockSystem, pos, hand, this.mouseOver.sideHit, hitX, hitY, hitZ);
                     this.player.rotationPitch = rotationPitch;
                     this.player.rotationYaw = rotationYaw;
                     if (actionResult == EnumActionResult.SUCCESS) {
                         this.player.swingArm(hand);
                     }
-                    if (this.player.capabilities.isCreativeMode && heldItem.stackSize < size) {
-                        heldItem.stackSize = size;
+                    if (this.player.capabilities.isCreativeMode && heldItem.getCount() < originalCount) {
+                        heldItem.setCount(originalCount);
                     }
-                    if (heldItem.stackSize <= 0) {
-                        this.player.setHeldItem(hand, null);
+                    if (heldItem.isEmpty()) {
+                        this.player.setHeldItem(hand, ItemStack.EMPTY);
                         ForgeEventFactory.onPlayerDestroyItem(this.player, heldItem, hand);
                     }
                     return true;

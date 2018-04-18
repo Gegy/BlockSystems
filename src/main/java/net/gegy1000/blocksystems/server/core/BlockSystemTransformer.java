@@ -1,16 +1,16 @@
 package net.gegy1000.blocksystems.server.core;
 
+import net.gegy1000.blocksystems.BlockSystems;
 import net.gegy1000.blocksystems.server.core.transformer.Transformer;
 import net.gegy1000.blocksystems.server.transformer.ChunkRenderWorkerTransformer;
 import net.gegy1000.blocksystems.server.transformer.ChunkTransformer;
+import net.gegy1000.blocksystems.server.transformer.EntityListTransformer;
 import net.gegy1000.blocksystems.server.transformer.EntityRendererTransformer;
 import net.gegy1000.blocksystems.server.transformer.EntityTransformer;
 import net.gegy1000.blocksystems.server.transformer.ParticleManagerTransformer;
 import net.gegy1000.blocksystems.server.transformer.TileEntityTransformer;
 import net.gegy1000.blocksystems.server.transformer.WorldTransformer;
 import net.minecraft.launchwrapper.IClassTransformer;
-import net.minecraftforge.fml.relauncher.FMLRelaunchLog;
-import net.gegy1000.blocksystems.server.transformer.EntityListTransformer;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
@@ -63,7 +63,7 @@ public class BlockSystemTransformer implements IClassTransformer {
                     }
                 }
                 if (apply.size() > 0) {
-                    FMLRelaunchLog.info(">> Transforming Class: " + transformedName);
+                    BlockSystems.LOGGER.info(">> Transforming Class: " + transformedName);
                     ClassReader classReader = new ClassReader(bytes);
                     ClassNode classNode = new ClassNode();
                     classReader.accept(classNode, 0);

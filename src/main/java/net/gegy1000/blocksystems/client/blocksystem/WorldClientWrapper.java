@@ -15,7 +15,7 @@ public class WorldClientWrapper extends WorldClient {
     private BlockSystem blockSystem;
 
     public WorldClientWrapper(BlockSystem blockSystem) {
-        super(null, new WorldSettings(blockSystem.getMainWorld().getWorldInfo()), blockSystem.provider.getDimension(), blockSystem.getMainWorld().getDifficulty(), blockSystem.theProfiler);
+        super(null, new WorldSettings(blockSystem.getMainWorld().getWorldInfo()), blockSystem.provider.getDimension(), blockSystem.getMainWorld().getDifficulty(), blockSystem.profiler);
         this.blockSystem = blockSystem;
     }
 

@@ -43,17 +43,17 @@ public class ServerChunkCacheBlockSystem extends ChunkProviderServer {
     }
 
     @Override
-    public void unload(Chunk chunk) {
-        if (this.world.provider.canDropChunk(chunk.xPosition, chunk.zPosition)) {
-            this.droppedChunksSet.add(ChunkPos.asLong(chunk.xPosition, chunk.zPosition));
-            chunk.unloaded = true;
+    public void queueUnload(Chunk chunk) {
+        if (this.world.provider.canDropChunk(chunk.x, chunk.z)) {
+            this.droppedChunksSet.add(ChunkPos.asLong(chunk.x, chunk.z));
+            chunk.unloadQueued = true;
         }
     }
 
     @Override
-    public void unloadAllChunks() {
+    public void queueUnloadAll() {
         for (Chunk chunk : this.id2ChunkMap.values()) {
-            this.unload(chunk);
+            this.queueUnload(chunk);
         }
     }
 
@@ -61,7 +61,7 @@ public class ServerChunkCacheBlockSystem extends ChunkProviderServer {
     public Chunk getLoadedChunk(int x, int z) {
         BlockSystemChunk chunk = (BlockSystemChunk) this.id2ChunkMap.get(ChunkPos.asLong(x, z));
         if (chunk != null) {
-            chunk.unloaded = false;
+            chunk.unloadQueued = false;
         }
         return chunk;
     }
@@ -81,7 +81,7 @@ public class ServerChunkCacheBlockSystem extends ChunkProviderServer {
                 long pos = ChunkPos.asLong(x, z);
                 chunk = new BlockSystemChunk(this.world, x, z);
                 this.id2ChunkMap.put(pos, chunk);
-                chunk.onChunkLoad();
+                chunk.onLoad();
             }
         }
         if (runnable != null) {
@@ -95,7 +95,7 @@ public class ServerChunkCacheBlockSystem extends ChunkProviderServer {
         Chunk chunk = this.loadChunk(x, z);
         if (chunk == null) {
             this.id2ChunkMap.put(ChunkPos.asLong(x, z), chunk = new BlockSystemChunk(this.world, x, z));
-            chunk.onChunkLoad();
+            chunk.onLoad();
         }
         return chunk;
     }
@@ -140,8 +140,8 @@ public class ServerChunkCacheBlockSystem extends ChunkProviderServer {
     }
 
     @Override
-    public void saveExtraData() {
-        this.chunkLoader.saveExtraData();
+    public void flushToDisk() {
+        this.chunkLoader.flush();
     }
 
     @Override
@@ -149,14 +149,14 @@ public class ServerChunkCacheBlockSystem extends ChunkProviderServer {
         if (!this.world.disableLevelSaving) {
             if (!this.droppedChunksSet.isEmpty()) {
                 for (ChunkPos forced : this.world.getPersistentChunks().keySet()) {
-                    this.droppedChunksSet.remove(ChunkPos.asLong(forced.chunkXPos, forced.chunkZPos));
+                    this.droppedChunksSet.remove(ChunkPos.asLong(forced.x, forced.z));
                 }
                 Iterator<Long> iterator = this.droppedChunksSet.iterator();
                 for (int i = 0; i < 100 && iterator.hasNext(); iterator.remove()) {
                     Long id = iterator.next();
                     Chunk chunk = this.id2ChunkMap.get(id);
-                    if (chunk != null && chunk.unloaded) {
-                        chunk.onChunkUnload();
+                    if (chunk != null && chunk.unloadQueued) {
+                        chunk.onUnload();
                         this.saveChunkData(chunk);
                         this.saveChunkExtraData(chunk);
                         this.id2ChunkMap.remove(id);
@@ -180,18 +180,18 @@ public class ServerChunkCacheBlockSystem extends ChunkProviderServer {
 
     @Override
     public String makeString() {
-        return "ServerChunkCache: " + this.id2ChunkMap.size() + " Drop: " + this.droppedChunksSet.size();
+        return "ServerChunkCacheBlockSystem: " + this.id2ChunkMap.size() + " Drop: " + this.droppedChunksSet.size();
+    }
+
+    @Nullable
+    @Override
+    public BlockPos getNearestStructurePos(World world, String structureName, BlockPos position, boolean findUnexplored) {
+        return null;
     }
 
     @Override
     public List<Biome.SpawnListEntry> getPossibleCreatures(EnumCreatureType creatureType, BlockPos pos) {
         return Lists.newArrayList();
-    }
-
-    @Override
-    @Nullable
-    public BlockPos getStrongholdGen(World world, String structureName, BlockPos position) {
-        return null;
     }
 
     @Override

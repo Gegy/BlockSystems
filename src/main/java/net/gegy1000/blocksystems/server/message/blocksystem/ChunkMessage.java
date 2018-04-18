@@ -42,11 +42,11 @@ public class ChunkMessage extends BaseMessage<ChunkMessage> {
 
     public ChunkMessage(BlockSystem blockSystem, BlockSystemChunk chunk, int mask) {
         this.blockSystem = blockSystem.getID();
-        this.x = chunk.xPosition;
-        this.z = chunk.zPosition;
+        this.x = chunk.x;
+        this.z = chunk.z;
         this.loadChunk = mask == 65535;
         this.partitionPosition = chunk.getPartitionPosition();
-        boolean hasSkylight = !blockSystem.getMainWorld().provider.hasNoSky();
+        boolean hasSkylight = !blockSystem.getMainWorld().provider.isNether();
         this.buffer = new byte[this.calculateChunkSize(chunk, hasSkylight, mask)];
         this.availableSections = this.extractChunkData(new PacketBuffer(this.getWriteBuffer()), chunk, hasSkylight, mask);
         this.tileEntityTags = Lists.newArrayList();
@@ -104,7 +104,7 @@ public class ChunkMessage extends BaseMessage<ChunkMessage> {
             }
             BlockSystemChunk chunk = (BlockSystemChunk) clientSystem.getChunkFromChunkCoords(this.x, this.z);
             chunk.setPartitionPosition(this.partitionPosition);
-            chunk.fillChunk(this.getReadBuffer(), this.availableSections, this.loadChunk);
+            chunk.read(this.getReadBuffer(), this.availableSections, this.loadChunk);
             clientSystem.markBlockRangeForRenderUpdate(this.x << 4, 0, this.z << 4, (this.x << 4) + 15, 256, (this.z << 4) + 15);
             if (!this.loadChunk || !(clientSystem.provider instanceof WorldProviderSurface)) {
                 chunk.resetRelightChecks();
@@ -137,9 +137,9 @@ public class ChunkMessage extends BaseMessage<ChunkMessage> {
             if (storage != Chunk.NULL_BLOCK_STORAGE && (!this.loadChunk || !storage.isEmpty()) && (mask & 1 << storageIndex) != 0) {
                 availableSections |= 1 << storageIndex;
                 storage.getData().write(buffer);
-                buffer.writeBytes(storage.getBlocklightArray().getData());
+                buffer.writeBytes(storage.getBlockLight().getData());
                 if (skylight) {
-                    buffer.writeBytes(storage.getSkylightArray().getData());
+                    buffer.writeBytes(storage.getSkyLight().getData());
                 }
             }
         }
@@ -156,9 +156,9 @@ public class ChunkMessage extends BaseMessage<ChunkMessage> {
             ExtendedBlockStorage storage = storages[i];
             if (storage != Chunk.NULL_BLOCK_STORAGE && (!this.loadChunk || !storage.isEmpty()) && (mask & 1 << i) != 0) {
                 size = size + storage.getData().getSerializedSize();
-                size = size + storage.getBlocklightArray().getData().length;
+                size = size + storage.getBlockLight().getData().length;
                 if (skylight) {
-                    size += storage.getSkylightArray().getData().length;
+                    size += storage.getSkyLight().getData().length;
                 }
             }
         }

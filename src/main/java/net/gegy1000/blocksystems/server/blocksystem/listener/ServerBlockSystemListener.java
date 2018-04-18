@@ -54,6 +54,10 @@ public class ServerBlockSystemListener implements IWorldEventListener {
     }
 
     @Override
+    public void spawnParticle(int id, boolean ignoreRange, boolean p_190570_3_, double x, double y, double z, double xSpeed, double ySpeed, double zSpeed, int... parameters) {
+    }
+
+    @Override
     public void onEntityAdded(Entity entity) {
     }
 
@@ -70,7 +74,7 @@ public class ServerBlockSystemListener implements IWorldEventListener {
         Vec3d transformed = this.blockSystem.getTransformedPosition(new Vec3d(pos.getX(), pos.getY(), pos.getZ()));
         int dimension = this.blockSystem.getMainWorld().provider.getDimension();
         PlayEventMessage message = new PlayEventMessage(this.blockSystem, pos, type, data, false);
-        NetworkHelper.sendToAllNearExcept(this.blockSystem.getMainWorld(), player, transformed.xCoord, transformed.yCoord, transformed.zCoord,64.0, dimension, message);
+        NetworkHelper.sendToAllNearExcept(this.blockSystem.getMainWorld(), player, transformed.x, transformed.y, transformed.z,64.0, dimension, message);
     }
 
     @Override

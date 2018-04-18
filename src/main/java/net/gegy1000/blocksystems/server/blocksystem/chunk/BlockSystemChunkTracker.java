@@ -60,7 +60,7 @@ public class BlockSystemChunkTracker {
                         BlockSystemPlayerTracker tracker = iterator.next();
                         Chunk chunk = tracker.getProvidingChunk();
                         if (chunk != null) {
-                            if (!chunk.isLightPopulated() || !chunk.isChunkTicked()) {
+                            if (!chunk.isLightPopulated() && chunk.isTerrainPopulated() || !chunk.wasTicked()) {
                                 return chunk;
                             }
                             if (!tracker.hasPlayerMatchingInRange(128.0, BlockSystemChunkTracker.NOT_SPECTATOR)) {
@@ -143,7 +143,7 @@ public class BlockSystemChunkTracker {
         if (this.players.isEmpty()) {
             WorldProvider provider = this.blockSystem.provider;
             if (!provider.canRespawnHere()) {
-                this.blockSystem.getChunkProvider().unloadAllChunks();
+                this.blockSystem.getChunkProvider().queueUnloadAll();
             }
         }
     }
@@ -215,7 +215,7 @@ public class BlockSystemChunkTracker {
         this.markSortPending();
     }
 
-    private boolean interects(int x1, int z1, int x2, int z2, int radius) {
+    private boolean intersects(int x1, int z1, int x2, int z2, int radius) {
         int deltaX = x1 - x2;
         int deltaZ = z1 - z2;
         return (deltaX >= -radius && deltaX <= radius) && (deltaZ >= -radius && deltaZ <= radius);
@@ -240,10 +240,10 @@ public class BlockSystemChunkTracker {
             if (deltaChunkX != 0 || deltaChunkZ != 0) {
                 for (int chunkX = playerChunkX - viewRadius; chunkX <= playerChunkX + viewRadius; ++chunkX) {
                     for (int chunkZ = playerChunkZ - viewRadius; chunkZ <= playerChunkZ + viewRadius; ++chunkZ) {
-                        if (!this.interects(chunkX, chunkZ, managedChunkX, managedChunkZ, viewRadius)) {
+                        if (!this.intersects(chunkX, chunkZ, managedChunkX, managedChunkZ, viewRadius)) {
                             this.getOrCreateTracker(chunkX, chunkZ).addPlayer(player);
                         }
-                        if (!this.interects(chunkX - deltaChunkX, chunkZ - deltaChunkZ, playerChunkX, playerChunkZ, viewRadius)) {
+                        if (!this.intersects(chunkX - deltaChunkX, chunkZ - deltaChunkZ, playerChunkX, playerChunkZ, viewRadius)) {
                             BlockSystemPlayerTracker tracker = this.getTracker(chunkX - deltaChunkX, chunkZ - deltaChunkZ);
                             if (tracker != null) {
                                 tracker.removePlayer(player);
@@ -283,7 +283,7 @@ public class BlockSystemChunkTracker {
                 } else {
                     for (int chunkX = playerChunkX - this.playerViewRadius; chunkX <= playerChunkX + this.playerViewRadius; ++chunkX) {
                         for (int chunkZ = playerChunkZ - this.playerViewRadius; chunkZ <= playerChunkZ + this.playerViewRadius; ++chunkZ) {
-                            if (!this.interects(chunkX, chunkZ, playerChunkX, playerChunkZ, radius)) {
+                            if (!this.intersects(chunkX, chunkZ, playerChunkX, playerChunkZ, radius)) {
                                 this.getOrCreateTracker(chunkX, chunkZ).removePlayer(player);
                             }
                         }
@@ -310,7 +310,7 @@ public class BlockSystemChunkTracker {
 
     public void removeTracker(BlockSystemPlayerTracker tracker) {
         ChunkPos pos = tracker.getChunkPosition();
-        long index = getChunkIndex(pos.chunkXPos, pos.chunkZPos);
+        long index = getChunkIndex(pos.x, pos.z);
         tracker.updateChunkInhabitedTime();
         this.playerTrackers.remove(index);
         this.playerTrackerList.remove(tracker);
@@ -319,7 +319,7 @@ public class BlockSystemChunkTracker {
         this.requestQueue.remove(tracker);
         Chunk chunk = tracker.getProvidingChunk();
         if (chunk != null) {
-            this.getBlockSystem().getChunkProvider().unload(chunk);
+            this.getBlockSystem().getChunkProvider().queueUnload(chunk);
         }
     }
 

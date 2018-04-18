@@ -42,9 +42,9 @@ public class BlockSystemHooks {
             particle.prevPosY = transformed.getY();
             particle.prevPosZ = transformed.getZ();
             Vec3d transformedVelocity = transforming.getTransformedVector(new Vec3d(particle.motionX, particle.motionY, particle.motionZ));
-            particle.motionX = transformedVelocity.xCoord;
-            particle.motionY = transformedVelocity.yCoord;
-            particle.motionZ = transformedVelocity.zCoord;
+            particle.motionX = transformedVelocity.x;
+            particle.motionY = transformedVelocity.y;
+            particle.motionZ = transformedVelocity.z;
         }
     }
 

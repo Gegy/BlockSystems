@@ -69,6 +69,7 @@ public class UpdateBlockEntityMessage extends BaseMessage<UpdateBlockEntityMessa
         if (blockSystem != null) {
             if (blockSystem.isBlockLoaded(this.pos)) {
                 TileEntity blockEntity = blockSystem.getTileEntity(this.pos);
+                // Hardcoded vanilla handling...
                 boolean commandBlock = this.type == 2 && blockEntity instanceof TileEntityCommandBlock;
                 if (this.type == 1 && blockEntity instanceof TileEntityMobSpawner || commandBlock || this.type == 3 && blockEntity instanceof TileEntityBeacon || this.type == 4 && blockEntity instanceof TileEntitySkull || this.type == 5 && blockEntity instanceof TileEntityFlowerPot || this.type == 6 && blockEntity instanceof TileEntityBanner || this.type == 7 && blockEntity instanceof TileEntityStructure || this.type == 8 && blockEntity instanceof TileEntityEndGateway || this.type == 9 && blockEntity instanceof TileEntitySign) {
                     blockEntity.readFromNBT(this.data);

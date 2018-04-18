@@ -12,11 +12,9 @@ import net.minecraft.world.EnumSkyBlock;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.ChunkPrimer;
-import net.minecraft.world.chunk.IChunkGenerator;
 import net.minecraft.world.chunk.IChunkProvider;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.world.gen.IChunkGenerator;
 
 import java.util.List;
 
@@ -70,11 +68,11 @@ public class HookedChunk extends Chunk {
     }
 
     @Override
-    public void onChunkLoad() {
+    public void onLoad() {
     }
 
     @Override
-    public void onChunkUnload() {
+    public void onUnload() {
     }
 
     @Override
@@ -82,8 +80,7 @@ public class HookedChunk extends Chunk {
     }
 
     @Override
-    @SideOnly(Side.CLIENT)
-    public void fillChunk(PacketBuffer buf, int sections, boolean load) {
+    public void read(PacketBuffer buf, int availableSections, boolean groundUpContinuous) {
     }
 
     @Override
@@ -92,7 +89,7 @@ public class HookedChunk extends Chunk {
     }
 
     @Override
-    public boolean getAreLevelsEmpty(int startY, int endY) {
+    public boolean isEmptyBetween(int startY, int endY) {
         return true;
     }
 
@@ -133,7 +130,7 @@ public class HookedChunk extends Chunk {
     }
 
     @Override
-    public void setChunkModified() {
+    public void markDirty() {
     }
 
     @Override
@@ -141,7 +138,7 @@ public class HookedChunk extends Chunk {
     }
 
     @Override
-    public <T extends Entity> void getEntitiesOfTypeWithinAAAB(Class<? extends T> entityClass, AxisAlignedBB aabb, List<T> entities, Predicate<? super T> selector) {
+    public <T extends Entity> void getEntitiesOfTypeWithinAABB(Class<? extends T> entityClass, AxisAlignedBB aabb, List<T> listToFill, Predicate<? super T> filter) {
     }
 
     @Override
@@ -150,7 +147,7 @@ public class HookedChunk extends Chunk {
     }
 
     @Override
-    protected void populateChunk(IChunkGenerator generator) {
+    protected void populate(IChunkGenerator generator) {
     }
 
     @Override
@@ -158,6 +155,6 @@ public class HookedChunk extends Chunk {
     }
 
     @Override
-    public void populateChunk(IChunkProvider chunkProvider, IChunkGenerator generator) {
+    public void populate(IChunkProvider chunkProvider, IChunkGenerator chunkGenrator) {
     }
 }

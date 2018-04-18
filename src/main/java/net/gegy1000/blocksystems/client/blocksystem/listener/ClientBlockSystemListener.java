@@ -50,36 +50,38 @@ public class ClientBlockSystemListener implements IWorldEventListener {
     }
 
     @Override
-    public void spawnParticle(int particleID, boolean ignoreRange, double xCoord, double yCoord, double zCoord, double xSpeed, double ySpeed, double zSpeed, int... parameters) {
+    public void spawnParticle(int id, boolean ignoreRange, double x, double y, double z, double xSpeed, double ySpeed, double zSpeed, int... parameters) {
+        this.spawnParticle(id, ignoreRange, false, x, y, z, xSpeed, ySpeed, zSpeed, parameters);
+    }
+
+    @Override
+    public void spawnParticle(int id, boolean ignoreRange, boolean minParticles, double x, double y, double z, double xSpeed, double ySpeed, double zSpeed, int... parameters) {
         try {
-            this.spawnEffectParticle(particleID, ignoreRange, xCoord, yCoord, zCoord, xSpeed, ySpeed, zSpeed, parameters);
+            this.spawnEffectParticle(id, ignoreRange, minParticles, x, y, z, xSpeed, ySpeed, zSpeed, parameters);
         } catch (Throwable throwable) {
             CrashReport crash = CrashReport.makeCrashReport(throwable, "Exception while adding particle");
             CrashReportCategory category = crash.makeCategory("Particle being added");
-            category.addCrashSection("ID", particleID);
+            category.addCrashSection("ID", id);
             category.addCrashSection("Parameters", parameters);
-            category.setDetail("Position", () -> CrashReportCategory.getCoordinateInfo(xCoord, yCoord, zCoord));
+            category.addDetail("Position", () -> CrashReportCategory.getCoordinateInfo(x, y, z));
             throw new ReportedException(crash);
         }
     }
 
-    private Particle spawnEffectParticle(int particleID, boolean ignoreRange, double xCoord, double yCoord, double zCoord, double xSpeed, double ySpeed, double zSpeed, int... parameters) {
+    private Particle spawnEffectParticle(int particleID, boolean ignoreRange, boolean minParticles, double xCoord, double yCoord, double zCoord, double xSpeed, double ySpeed, double zSpeed, int... parameters) {
         Entity entity = this.mc.getRenderViewEntity();
         if (this.mc != null && entity != null && this.mc.effectRenderer != null) {
-            int particleSetting = this.mc.gameSettings.particleSetting;
-            if (particleSetting == 1 && this.mc.world.rand.nextInt(3) == 0) {
-                particleSetting = 2;
-            }
+            int particleLevel = this.getParticleLevel(minParticles);
             double deltaX = entity.posX - xCoord;
             double deltaY = entity.posY - yCoord;
             double deltaZ = entity.posZ - zCoord;
             if (ignoreRange) {
                 return this.mc.effectRenderer.spawnEffectParticle(particleID, xCoord, yCoord, zCoord, xSpeed, ySpeed, zSpeed, parameters);
             } else {
-                if (deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ > 1024.0D) {
+                if (deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ > 1024.0) {
                     return null;
                 } else {
-                    if (particleSetting > 1) {
+                    if (particleLevel > 1) {
                         return null;
                     } else {
                         return this.mc.effectRenderer.spawnEffectParticle(particleID, xCoord, yCoord, zCoord, xSpeed, ySpeed, zSpeed, parameters);
@@ -89,6 +91,17 @@ public class ClientBlockSystemListener implements IWorldEventListener {
         } else {
             return null;
         }
+    }
+
+    private int getParticleLevel(boolean minParticle) {
+        int level = this.mc.gameSettings.particleSetting;
+        if (minParticle && level == 2 && this.blockSystem.rand.nextInt(10) == 0) {
+            level = 1;
+        }
+        if (level == 1 && this.blockSystem.rand.nextInt(3) == 0) {
+            level = 2;
+        }
+        return level;
     }
 
     @Override

@@ -73,15 +73,15 @@ public class InteractBlockMessage extends BaseMessage<InteractBlockMessage> {
         if (blockSystem != null) {
             IBlockState state = blockSystem.getBlockState(this.position);
             ItemStack heldItem = player.getHeldItem(this.hand);
-            if (!state.getBlock().onBlockActivated(blockSystem, this.position, state, player, this.hand, heldItem, this.side, this.hitX, this.hitY, this.hitZ)) {
-                if (heldItem != null) {
-                    int size = heldItem.stackSize;
+            if (!state.getBlock().onBlockActivated(blockSystem, this.position, state, player, this.hand, this.side, this.hitX, this.hitY, this.hitZ)) {
+                if (!heldItem.isEmpty()) {
+                    int originalCount = heldItem.getCount();
                     heldItem.onItemUse(player, blockSystem, this.position, this.hand, this.side, this.hitX, this.hitY, this.hitZ);
-                    if (player.capabilities.isCreativeMode && heldItem.stackSize < size) {
-                        heldItem.stackSize = size;
+                    if (player.capabilities.isCreativeMode && heldItem.getCount() < originalCount) {
+                        heldItem.setCount(originalCount);
                     }
-                    if (heldItem.stackSize <= 0) {
-                        player.setHeldItem(this.hand, null);
+                    if (heldItem.isEmpty()) {
+                        player.setHeldItem(this.hand, ItemStack.EMPTY);
                         ForgeEventFactory.onPlayerDestroyItem(player, heldItem, this.hand);
                     }
                 }

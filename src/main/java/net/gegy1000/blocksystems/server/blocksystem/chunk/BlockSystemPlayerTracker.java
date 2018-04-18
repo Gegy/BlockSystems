@@ -47,13 +47,13 @@ public class BlockSystemPlayerTracker {
     private boolean loading = true;
 
     public BlockSystemPlayerTracker(BlockSystemChunkTracker trackManager, int chunkX, int chunkZ) {
-        this.loadedRunnable = () -> {
-            BlockSystemPlayerTracker.this.providingChunk = (BlockSystemChunk) BlockSystemPlayerTracker.this.blockSystem.getChunkProvider().loadChunk(BlockSystemPlayerTracker.this.chunkPosition.chunkXPos, BlockSystemPlayerTracker.this.chunkPosition.chunkZPos);
-            BlockSystemPlayerTracker.this.loading = false;
-        };
         this.trackManager = trackManager;
         this.chunkPosition = new ChunkPos(chunkX, chunkZ);
         this.blockSystem = trackManager.getBlockSystem();
+        this.loadedRunnable = () -> {
+            BlockSystemPlayerTracker.this.providingChunk = (BlockSystemChunk) BlockSystemPlayerTracker.this.blockSystem.getChunkProvider().loadChunk(BlockSystemPlayerTracker.this.chunkPosition.x, BlockSystemPlayerTracker.this.chunkPosition.z);
+            BlockSystemPlayerTracker.this.loading = false;
+        };
         this.blockSystem.getChunkProvider().loadChunk(chunkX, chunkZ, this.loadedRunnable);
     }
 
@@ -63,7 +63,7 @@ public class BlockSystemPlayerTracker {
 
     public void addPlayer(EntityPlayerMP player) {
         if (this.players.contains(player)) {
-            LOGGER.debug("Failed to add player. {} already is in chunk {}, {}", player, this.chunkPosition.chunkXPos, this.chunkPosition.chunkZPos);
+            LOGGER.debug("Failed to add player. {} already is in chunk {}, {}", player, this.chunkPosition.x, this.chunkPosition.z);
         } else {
             if (this.players.isEmpty()) {
                 this.lastUpdateInhabitedTime = this.blockSystem.getTotalWorldTime();
@@ -82,14 +82,14 @@ public class BlockSystemPlayerTracker {
                 this.players.remove(player);
                 if (this.players.isEmpty()) {
                     if (this.loading) {
-                        ChunkIOExecutor.dropQueuedChunkLoad(this.blockSystem, this.chunkPosition.chunkXPos, this.chunkPosition.chunkZPos, this.loadedRunnable);
+                        ChunkIOExecutor.dropQueuedChunkLoad(this.blockSystem, this.chunkPosition.x, this.chunkPosition.z, this.loadedRunnable);
                     }
                     this.trackManager.removeTracker(this);
                 }
                 return;
             }
             if (this.sentToPlayers) {
-                BlockSystems.NETWORK_WRAPPER.sendTo(new UnloadChunkMessage(this.blockSystem, this.chunkPosition.chunkXPos, this.chunkPosition.chunkZPos), player);
+                BlockSystems.NETWORK_WRAPPER.sendTo(new UnloadChunkMessage(this.blockSystem, this.chunkPosition.x, this.chunkPosition.z), player);
             }
             this.players.remove(player);
             World world = player.world;
@@ -108,8 +108,8 @@ public class BlockSystemPlayerTracker {
                 return true;
             } else {
                 ChunkProviderServer chunkProvider = this.blockSystem.getChunkProvider();
-                int x = this.chunkPosition.chunkXPos;
-                int z = this.chunkPosition.chunkZPos;
+                int x = this.chunkPosition.x;
+                int z = this.chunkPosition.z;
                 if (canGenerate) {
                     this.providingChunk = (BlockSystemChunk) chunkProvider.provideChunk(x, z);
                 } else {
@@ -188,9 +188,9 @@ public class BlockSystemPlayerTracker {
         if (this.sentToPlayers && this.providingChunk != null) {
             if (this.changeCount != 0) {
                 if (this.changeCount == 1) {
-                    int changedX = (this.changedBlocks[0] >> 12 & 15) + this.chunkPosition.chunkXPos * 16;
+                    int changedX = (this.changedBlocks[0] >> 12 & 15) + this.chunkPosition.x * 16;
                     int changedY = this.changedBlocks[0] & 255;
-                    int changedZ = (this.changedBlocks[0] >> 8 & 15) + this.chunkPosition.chunkZPos * 16;
+                    int changedZ = (this.changedBlocks[0] >> 8 & 15) + this.chunkPosition.z * 16;
                     BlockPos changedPos = new BlockPos(changedX, changedY, changedZ);
                     IBlockState state = this.blockSystem.getBlockState(changedPos);
                     this.sendMessage(new SetBlockMessage(this.blockSystem, changedPos, state));
@@ -202,9 +202,9 @@ public class BlockSystemPlayerTracker {
                 } else {
                     this.sendMessage(new MultiBlockUpdateMessage(this.blockSystem, this.providingChunk, this.changeCount, this.changedBlocks));
                     for (int change = 0; change < this.changeCount; ++change) {
-                        int x = (this.changedBlocks[change] >> 12 & 15) + this.chunkPosition.chunkXPos * 16;
+                        int x = (this.changedBlocks[change] >> 12 & 15) + this.chunkPosition.x * 16;
                         int y = this.changedBlocks[change] & 255;
-                        int z = (this.changedBlocks[change] >> 8 & 15) + this.chunkPosition.chunkZPos * 16;
+                        int z = (this.changedBlocks[change] >> 8 & 15) + this.chunkPosition.z * 16;
                         BlockPos changedPos = new BlockPos(x, y, z);
                         IBlockState state = this.blockSystem.getBlockState(changedPos);
                         if (state.getBlock().hasTileEntity(state)) {

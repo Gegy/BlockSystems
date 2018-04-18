@@ -127,7 +127,7 @@ public class Matrix {
     }
 
     public Vec3d transformPoint(Vec3d vec) {
-        Point3d point = new Point3d(vec.xCoord, vec.yCoord, vec.zCoord);
+        Point3d point = new Point3d(vec.x, vec.y, vec.z);
         this.transform(point);
         return new Vec3d(point.getX(), point.getY(), point.getZ());
     }

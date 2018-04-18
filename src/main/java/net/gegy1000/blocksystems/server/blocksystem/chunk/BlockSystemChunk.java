@@ -78,7 +78,7 @@ public class BlockSystemChunk extends Chunk {
                 int count = 0;
                 ExtendedBlockStorage storage = this.getBlockStorageArray()[storageY];
                 if (storage == NULL_BLOCK_STORAGE) {
-                    storage = new ExtendedBlockStorage(baseY, !this.blockSystem.provider.hasNoSky());
+                    storage = new ExtendedBlockStorage(baseY, !this.blockSystem.provider.isNether());
                 }
                 for (int y = 0; y < 16; y++) {
                     for (int x = 0; x < 16; x++) {
@@ -98,7 +98,7 @@ public class BlockSystemChunk extends Chunk {
                 }
                 this.blockCount += count;
             }
-            for (Map.Entry<BlockPos, TileEntity> entry : chunk.chunkTileEntityMap.entrySet()) {
+            for (Map.Entry<BlockPos, TileEntity> entry : chunk.tileEntities.entrySet()) {
                 this.addTileEntity(entry.getValue());
             }
         }

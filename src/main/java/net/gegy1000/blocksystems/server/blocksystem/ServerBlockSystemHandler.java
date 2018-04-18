@@ -3,7 +3,6 @@ package net.gegy1000.blocksystems.server.blocksystem;
 import net.gegy1000.blocksystems.server.util.RotatedAABB;
 import net.gegy1000.blocksystems.server.world.data.BlockSystemSavedData;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.EnumActionResult;
@@ -50,11 +49,10 @@ public class ServerBlockSystemHandler {
     }
 
     public boolean onItemRightClick(EntityPlayer player, EnumHand hand) {
-        boolean success = false;
-        success |= this.interact(this.get(this.getMousedOver(player), player), player, hand);
+        boolean success = this.interact(this.get(this.getMousedOver(player), player), player, hand);
         ItemStack heldItem = player.getHeldItem(hand);
-        if (heldItem != null) {
-            int prevSize = heldItem.stackSize;
+        if (!heldItem.isEmpty()) {
+            int originalCount = heldItem.getCount();
             ActionResult<ItemStack> result = heldItem.useItemRightClick(player.world, player, hand);
             if (result.getType() != EnumActionResult.SUCCESS) {
                 for (Map.Entry<Integer, BlockSystem> blockSystem : this.blockSystems.entrySet()) {
@@ -66,13 +64,13 @@ public class ServerBlockSystemHandler {
             }
             success |= result.getType() == EnumActionResult.SUCCESS;
             ItemStack output = result.getResult();
-            if (output != heldItem || output.stackSize != prevSize) {
-                if (player.capabilities.isCreativeMode && output.stackSize < prevSize) {
-                    output.stackSize = prevSize;
+            if (output != heldItem || output.getCount() != originalCount) {
+                if (player.capabilities.isCreativeMode && output.getCount() < originalCount) {
+                    output.setCount(originalCount);
                 }
                 player.setHeldItem(hand, output);
-                if (output.stackSize <= 0) {
-                    player.setHeldItem(hand, null);
+                if (!output.isEmpty()) {
+                    player.setHeldItem(hand, ItemStack.EMPTY);
                     ForgeEventFactory.onPlayerDestroyItem(player, output, hand);
                 }
             }
@@ -97,27 +95,24 @@ public class ServerBlockSystemHandler {
         double y = player.posY + player.getEyeHeight();
         double z = player.posZ;
         Vec3d start = new Vec3d(x, y, z);
-        float pitchHorizontalFactor = -MathHelper.cos(-pitch * 0.017453292F);
-        float deltaY = MathHelper.sin(-pitch * 0.017453292F);
-        float deltaX = MathHelper.sin(-yaw * 0.017453292F - (float) Math.PI) * pitchHorizontalFactor;
-        float deltaZ = MathHelper.cos(-yaw * 0.017453292F - (float) Math.PI) * pitchHorizontalFactor;
-        double reach = 5.0;
-        if (player instanceof EntityPlayerMP) {
-            reach = ((EntityPlayerMP) player).interactionManager.getBlockReachDistance();
-        }
+        float pitchHorizontalFactor = -MathHelper.cos((float) -Math.toRadians(pitch));
+        float deltaY = MathHelper.sin((float) -Math.toRadians(pitch));
+        float deltaX = MathHelper.sin((float) -Math.toRadians(yaw - 180.0F)) * pitchHorizontalFactor;
+        float deltaZ = MathHelper.cos((float) -Math.toRadians(yaw - 180.0F)) * pitchHorizontalFactor;
+        double reach = player.getEntityAttribute(EntityPlayer.REACH_DISTANCE).getAttributeValue();
         Vec3d end = start.addVector(deltaX * reach, deltaY * reach, deltaZ * reach);
         Map<BlockSystem, RayTraceResult> results = new HashMap<>();
         for (Map.Entry<Integer, BlockSystem> entry : this.blockSystems.entrySet()) {
             BlockSystem blockSystem = entry.getValue();
             RotatedAABB bounds = blockSystem.getRotatedBounds();
-            if (bounds.aabb().intersectsWith(player.getEntityBoundingBox().expandXyz(5.0))) {
+            if (bounds.aabb().intersects(player.getEntityBoundingBox().grow(5.0))) {
                 RayTraceResult result = blockSystem.rayTraceBlocks(start, end);
                 if (result != null && result.typeOfHit != RayTraceResult.Type.MISS) {
                     results.put(blockSystem, result);
                 }
             }
         }
-        if (results.size() > 0) {
+        if (!results.isEmpty()) {
             Map.Entry<BlockSystem, RayTraceResult> closest = null;
             double closestDistance = Double.MAX_VALUE;
             for (Map.Entry<BlockSystem, RayTraceResult> entry : results.entrySet()) {

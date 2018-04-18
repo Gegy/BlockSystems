@@ -1,6 +1,6 @@
 package net.gegy1000.blocksystems.client.blocksystem;
 
-import com.google.common.base.Objects;
+import com.google.common.base.MoreObjects;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.gegy1000.blocksystems.client.blocksystem.chunk.ClientBlockSystemChunk;
@@ -40,7 +40,7 @@ public class MultiplayerChunkCacheBlockSystem implements IChunkProvider {
     public void unloadChunk(int x, int z) {
         BlockSystemChunk chunk = (BlockSystemChunk) this.provideChunk(x, z);
         if (!chunk.isEmpty()) {
-            chunk.onChunkUnload();
+            chunk.onUnload();
         }
         this.chunkMapping.remove(ChunkPos.asLong(x, z));
     }
@@ -54,13 +54,13 @@ public class MultiplayerChunkCacheBlockSystem implements IChunkProvider {
         BlockSystemChunk chunk = new ClientBlockSystemChunk(this.blockSystem, chunkX, chunkZ);
         this.chunkMapping.put(ChunkPos.asLong(chunkX, chunkZ), chunk);
         MinecraftForge.EVENT_BUS.post(new ChunkEvent.Load(chunk));
-        chunk.setChunkLoaded(true);
+        chunk.markLoaded(true);
         return chunk;
     }
 
     @Override
     public Chunk provideChunk(int x, int z) {
-        return Objects.firstNonNull(this.getLoadedChunk(x, z), this.blankChunk);
+        return MoreObjects.firstNonNull(this.getLoadedChunk(x, z), this.blankChunk);
     }
 
     @Override
@@ -77,6 +77,11 @@ public class MultiplayerChunkCacheBlockSystem implements IChunkProvider {
 
     @Override
     public String makeString() {
-        return "MultiplayerChunkCache: " + this.chunkMapping.size() + ", " + this.chunkMapping.size();
+        return "MultiplayerChunkCacheBlockSystem: " + this.chunkMapping.size() + ", " + this.chunkMapping.size();
+    }
+
+    @Override
+    public boolean isChunkGeneratedAt(int x, int z) {
+        return this.chunkMapping.containsKey(ChunkPos.asLong(x, z));
     }
 }

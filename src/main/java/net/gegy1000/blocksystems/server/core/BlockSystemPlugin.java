@@ -5,9 +5,9 @@ import net.minecraftforge.fml.relauncher.IFMLLoadingPlugin;
 import java.util.Map;
 
 @IFMLLoadingPlugin.Name("blocksystems")
-@IFMLLoadingPlugin.MCVersion("1.10.2")
-@IFMLLoadingPlugin.SortingIndex(1002)
-@IFMLLoadingPlugin.TransformerExclusions({ "net.ilexiconn.llibrary.server.asm", "net.gegy1000.blocksystems.server.core" })
+@IFMLLoadingPlugin.MCVersion("1.12.2")
+@IFMLLoadingPlugin.SortingIndex(1001)
+@IFMLLoadingPlugin.TransformerExclusions({ "net.gegy1000.blocksystems.server.core" })
 public class BlockSystemPlugin implements IFMLLoadingPlugin {
     public static boolean loaded;
     public static boolean development;

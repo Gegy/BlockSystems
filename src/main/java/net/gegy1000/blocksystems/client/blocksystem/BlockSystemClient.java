@@ -81,7 +81,7 @@ public class BlockSystemClient extends BlockSystem {
     public boolean setBlockState(BlockPos pos, IBlockState newState, int flags) {
         if (!this.isValid(pos)) {
             return false;
-        } else if (!this.isRemote && this.worldInfo.getTerrainType() == WorldType.DEBUG_WORLD) {
+        } else if (!this.isRemote && this.worldInfo.getTerrainType() == WorldType.DEBUG_ALL_BLOCK_STATES) {
             return false;
         } else {
             Chunk chunk = this.getChunkFromBlockCoords(pos);
@@ -104,9 +104,9 @@ public class BlockSystemClient extends BlockSystem {
                 return false;
             } else {
                 if (newState.getLightOpacity(this, pos) != oldOpacity || newState.getLightValue(this, pos) != oldLight) {
-                    this.theProfiler.startSection("checkLight");
+                    this.profiler.startSection("checkLight");
                     this.checkLight(pos);
-                    this.theProfiler.endSection();
+                    this.profiler.endSection();
                 }
                 if (snapshot == null) {
                     this.markAndNotifyBlock(pos, chunk, state, newState, flags);

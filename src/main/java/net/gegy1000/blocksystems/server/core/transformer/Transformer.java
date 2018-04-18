@@ -19,7 +19,7 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 public abstract class Transformer implements Opcodes {
-    public static final Map<String, String> PRIMITIVES = new HashMap<>();
+    private static final Map<String, String> PRIMITIVES = new HashMap<>();
 
     static {
         PRIMITIVES.put("int", "I");
@@ -104,16 +104,16 @@ public abstract class Transformer implements Opcodes {
     }
 
     public String createDescriptor(Object... parameters) {
-        String descriptor = "(";
+        StringBuilder descriptor = new StringBuilder("(");
         if (parameters.length == 1) {
-            descriptor = "()" + this.createVarDescriptor(parameters[0]);
+            descriptor = new StringBuilder("()" + this.createVarDescriptor(parameters[0]));
         } else {
             for (int i = 0; i < parameters.length - 1; i++) {
-                descriptor += this.createVarDescriptor(parameters[i]);
+                descriptor.append(this.createVarDescriptor(parameters[i]));
             }
-            descriptor += ")" + this.createVarDescriptor(parameters[parameters.length - 1]);
+            descriptor.append(")").append(this.createVarDescriptor(parameters[parameters.length - 1]));
         }
-        return descriptor;
+        return descriptor.toString();
     }
 
     protected String createVarDescriptor(Object cls) {

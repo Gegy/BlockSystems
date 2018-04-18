@@ -20,24 +20,24 @@ public class ClientBlockSystemChunk extends BlockSystemChunk {
         super.remove();
         BlockSystemRenderer renderer = BlockSystemRenderHandler.get(this.blockSystem);
         if (renderer != null) {
-            renderer.deleteChunk(this.xPosition, this.zPosition);
+            renderer.deleteChunk(this.x, this.z);
         }
     }
 
     @Override
-    public void onChunkUnload() {
-        super.onChunkUnload();
+    public void onUnload() {
+        super.onUnload();
         BlockSystemRenderer renderer = BlockSystemRenderHandler.get(this.blockSystem);
         if (renderer != null) {
-            renderer.deleteChunk(this.xPosition, this.zPosition);
+            renderer.deleteChunk(this.x, this.z);
         }
     }
 
     @Override
     public TileEntity getTileEntity(BlockPos position, Chunk.EnumCreateEntityType type) {
-        TileEntity tile = this.chunkTileEntityMap.get(position);
+        TileEntity tile = this.tileEntities.get(position);
         if (tile != null && tile.isInvalid()) {
-            this.chunkTileEntityMap.remove(position);
+            this.tileEntities.remove(position);
             tile = null;
         }
         if (tile == null) {
@@ -52,8 +52,8 @@ public class ClientBlockSystemChunk extends BlockSystemChunk {
     }
 
     @Override
-    public void fillChunk(PacketBuffer buf, int available, boolean loadChunk) {
-        super.fillChunk(buf, available, loadChunk);
+    public void read(PacketBuffer buf, int available, boolean loadChunk) {
+        super.read(buf, available, loadChunk);
         this.blockCount = 0;
         for (int x = 0; x < 16; x++) {
             for (int y = 0; y < 256; y++) {

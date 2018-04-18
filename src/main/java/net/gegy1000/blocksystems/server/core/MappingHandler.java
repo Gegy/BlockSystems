@@ -1,11 +1,11 @@
 package net.gegy1000.blocksystems.server.core;
 
+import com.google.common.io.Closeables;
+
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
-
-import com.google.common.io.Closeables;
 
 public class MappingHandler {
     private static final Map<String, Map<String, String>> FIELD_MAPPINGS = new HashMap<>();
@@ -24,16 +24,10 @@ public class MappingHandler {
                 String name = split[0];
                 String mapping = split[1];
                 if (line.contains("(") && line.contains(")")) {
-                    Map<String, String> classMappings = METHOD_MAPPINGS.get(cls);
-                    if (classMappings == null) {
-                        METHOD_MAPPINGS.put(cls, classMappings = new HashMap<>());
-                    }
+                    Map<String, String> classMappings = METHOD_MAPPINGS.computeIfAbsent(cls, k -> new HashMap<>());
                     classMappings.put(name, mapping);
                 } else {
-                    Map<String, String> classMappings = FIELD_MAPPINGS.get(cls);
-                    if (classMappings == null) {
-                        FIELD_MAPPINGS.put(cls, classMappings = new HashMap<>());
-                    }
+                    Map<String, String> classMappings = FIELD_MAPPINGS.computeIfAbsent(cls, k -> new HashMap<>());
                     classMappings.put(name, mapping);
                 }
             }

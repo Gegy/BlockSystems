@@ -77,20 +77,20 @@ public class BlockSystemServer extends BlockSystem {
     @Override
     protected void updateBlocks() {
         int randomTickSpeed = this.getGameRules().getInt("randomTickSpeed");
-        this.theProfiler.startSection("pollingChunks");
-        for (Iterator<Chunk> iterator = this.getPersistentChunkIterable(this.chunkTracker.getChunkIterator()); iterator.hasNext(); this.theProfiler.endSection()) {
-            this.theProfiler.startSection("getChunk");
+        this.profiler.startSection("pollingChunks");
+        for (Iterator<Chunk> iterator = this.getPersistentChunkIterable(this.chunkTracker.getChunkIterator()); iterator.hasNext(); this.profiler.endSection()) {
+            this.profiler.startSection("getChunk");
             Chunk chunk = iterator.next();
-            int chunkX = chunk.xPosition * 16;
-            int chunkZ = chunk.zPosition * 16;
-            this.theProfiler.endStartSection("checkNextLight");
+            int chunkX = chunk.x * 16;
+            int chunkZ = chunk.z * 16;
+            this.profiler.endStartSection("checkNextLight");
             chunk.enqueueRelightChecks();
-            this.theProfiler.endStartSection("tickChunk");
+            this.profiler.endStartSection("tickChunk");
             chunk.onTick(false);
-            this.theProfiler.endStartSection("tickBlocks");
+            this.profiler.endStartSection("tickBlocks");
             if (randomTickSpeed > 0) {
                 for (ExtendedBlockStorage storage : chunk.getBlockStorageArray()) {
-                    if (storage != Chunk.NULL_BLOCK_STORAGE && storage.getNeedsRandomTick()) {
+                    if (storage != Chunk.NULL_BLOCK_STORAGE && storage.needsRandomTick()) {
                         for (int tick = 0; tick < randomTickSpeed; ++tick) {
                             this.updateLCG = this.updateLCG * 3 + 1013904223;
                             int position = this.updateLCG >> 2;
@@ -99,17 +99,17 @@ public class BlockSystemServer extends BlockSystem {
                             int z = position >> 16 & 15;
                             IBlockState state = storage.get(x, z, y);
                             Block block = state.getBlock();
-                            this.theProfiler.startSection("randomTick");
+                            this.profiler.startSection("randomTick");
                             if (block.getTickRandomly()) {
                                 block.randomTick(this, new BlockPos(x + chunkX, z + storage.getYLocation(), y + chunkZ), state, this.rand);
                             }
-                            this.theProfiler.endSection();
+                            this.profiler.endSection();
                         }
                     }
                 }
             }
         }
-        this.theProfiler.endSection();
+        this.profiler.endSection();
     }
 
     @Override
@@ -169,7 +169,7 @@ public class BlockSystemServer extends BlockSystem {
             if (updates > 65536) {
                 updates = 65536;
             }
-            this.theProfiler.startSection("cleaning");
+            this.profiler.startSection("cleaning");
             for (int i = 0; i < updates; i++) {
                 NextTickListEntry scheduledTick = this.scheduledTicksTree.first();
                 if (!checkTime && scheduledTick.scheduledTime > this.worldInfo.getWorldTotalTime()) {
@@ -179,8 +179,7 @@ public class BlockSystemServer extends BlockSystem {
                 this.scheduledTicksSet.remove(scheduledTick);
                 this.currentScheduledTicks.add(scheduledTick);
             }
-            this.theProfiler.endSection();
-            this.theProfiler.startSection("ticking");
+            this.profiler.endStartSection("ticking");
             for (NextTickListEntry scheduledTick : this.currentScheduledTicks) {
                 if (this.isAreaLoaded(scheduledTick.position.add(0, 0, 0), scheduledTick.position.add(0, 0, 0))) {
                     IBlockState state = this.getBlockState(scheduledTick.position);
@@ -199,7 +198,7 @@ public class BlockSystemServer extends BlockSystem {
                 }
             }
             this.currentScheduledTicks.clear();
-            this.theProfiler.endSection();
+            this.profiler.endSection();
             return !this.scheduledTicksTree.isEmpty();
         }
     }

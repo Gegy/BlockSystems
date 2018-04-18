@@ -1,7 +1,6 @@
 package net.gegy1000.blocksystems.server.blocksystem;
 
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.world.MinecraftException;
 import net.minecraft.world.WorldProvider;
 import net.minecraft.world.chunk.storage.IChunkLoader;
 import net.minecraft.world.gen.structure.template.TemplateManager;
@@ -18,7 +17,7 @@ public class BlockSystemSaveHandler implements ISaveHandler {
     }
 
     @Override
-    public void checkSessionLock() throws MinecraftException {
+    public void checkSessionLock() {
     }
 
     @Override

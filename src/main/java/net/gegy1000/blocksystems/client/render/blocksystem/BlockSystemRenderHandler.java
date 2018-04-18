@@ -5,12 +5,15 @@ import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.entity.player.EntityPlayer;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
 
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+@SideOnly(Side.CLIENT)
 public class BlockSystemRenderHandler {
     private static final Map<BlockSystem, BlockSystemRenderer> RENDERERS = new HashMap<>();
     private static final Set<BlockSystem> REMOVE = new HashSet<>();
