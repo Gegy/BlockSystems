@@ -9,21 +9,25 @@ import net.gegy1000.blocksystems.server.core.BlockSystemHooks;
 import net.gegy1000.blocksystems.server.world.BlockSystemWorldAccess;
 import net.gegy1000.blocksystems.server.world.data.BlockSystemSavedData;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.EnumHand;
+import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
+import net.minecraftforge.event.entity.living.LivingEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.world.WorldEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.common.gameevent.PlayerEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent.Phase;
 
-import java.util.Map;
+import java.util.Collection;
 
 @Mod.EventBusSubscriber(modid = BlockSystems.MODID)
 public class ServerEventHandler {
@@ -45,6 +49,21 @@ public class ServerEventHandler {
     }
 
     @SubscribeEvent
+    public static void onEntityTick(LivingEvent.LivingUpdateEvent event) {
+        EntityLivingBase entity = event.getEntityLiving();
+        AxisAlignedBB entityBounds = entity.getEntityBoundingBox();
+
+        // TODO: This is O(n) and not ideal
+        Collection<BlockSystem> blockSystems = BlockSystems.PROXY.getBlockSystemHandler(entity.world).getBlockSystems();
+        for (BlockSystem blockSystem : blockSystems) {
+            // TODO: Keep track of bounds that are being *used*, not just the maximum bounds for the whole blocksystem
+            AxisAlignedBB encompassing = blockSystem.getRotatedBounds().getEncompassing();
+            if (entityBounds.intersects(encompassing)) {
+            }
+        }
+    }
+
+    @SubscribeEvent
     public static void onEntityJoinWorld(EntityJoinWorldEvent event) {
         World world = event.getWorld();
         Entity entity = event.getEntity();
@@ -56,18 +75,24 @@ public class ServerEventHandler {
     }
 
     @SubscribeEvent
-    public void onLivingDeath(LivingDeathEvent event) {
+    public static void onLivingDeath(LivingDeathEvent event) {
         Entity entity = event.getEntity();
-        World world = entity.world;
         if (entity instanceof EntityPlayer) {
-            EntityPlayer player = (EntityPlayer) entity;
-            if (world instanceof WorldServer && player instanceof EntityPlayerMP) {
-                Map<Integer, BlockSystem> blockSystems = BlockSystems.PROXY.getBlockSystemHandler(world).getBlockSystems();
-                for (Map.Entry<Integer, BlockSystem> entry : blockSystems.entrySet()) {
-                    BlockSystem blockSystem = entry.getValue();
-                    if (blockSystem instanceof BlockSystemServer) {
-                        ((BlockSystemServer) blockSystem).getChunkTracker().removePlayer((EntityPlayerMP) player);
-                    }
+            removePlayer((EntityPlayer) entity, entity.world);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onPlayerQuit(PlayerEvent.PlayerLoggedOutEvent event) {
+        removePlayer(event.player, event.player.world);
+    }
+
+    private static void removePlayer(EntityPlayer player, World world) {
+        if (world instanceof WorldServer && player instanceof EntityPlayerMP) {
+            Collection<BlockSystem> blockSystems = BlockSystems.PROXY.getBlockSystemHandler(world).getBlockSystems();
+            for (BlockSystem blockSystem : blockSystems) {
+                if (blockSystem instanceof BlockSystemServer) {
+                    ((BlockSystemServer) blockSystem).getChunkTracker().removePlayer((EntityPlayerMP) player);
                 }
             }
         }

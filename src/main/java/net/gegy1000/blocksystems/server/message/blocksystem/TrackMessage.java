@@ -1,6 +1,10 @@
 package net.gegy1000.blocksystems.server.message.blocksystem;
 
 import io.netty.buffer.ByteBuf;
+import net.gegy1000.blocksystems.BlockSystems;
+import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
+import net.gegy1000.blocksystems.server.message.BaseMessage;
+import net.gegy1000.blocksystems.server.util.QuatRotation;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.multiplayer.WorldClient;
@@ -8,18 +12,13 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.fml.common.network.simpleimpl.MessageContext;
-import net.gegy1000.blocksystems.BlockSystems;
-import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
-import net.gegy1000.blocksystems.server.message.BaseMessage;
 
 public class TrackMessage extends BaseMessage<TrackMessage> {
     private int blockSystem;
     private double posX;
     private double posY;
     private double posZ;
-    private float rotationX;
-    private float rotationY;
-    private float rotationZ;
+    private QuatRotation rot;
 
     public TrackMessage() {
     }
@@ -29,9 +28,7 @@ public class TrackMessage extends BaseMessage<TrackMessage> {
         this.posX = blockSystem.posX;
         this.posY = blockSystem.posY;
         this.posZ = blockSystem.posZ;
-        this.rotationX = blockSystem.rotationX;
-        this.rotationY = blockSystem.rotationY;
-        this.rotationZ = blockSystem.rotationZ;
+        this.rot = blockSystem.rotation.copy();
     }
 
     @Override
@@ -40,9 +37,7 @@ public class TrackMessage extends BaseMessage<TrackMessage> {
         buf.writeDouble(this.posX);
         buf.writeDouble(this.posY);
         buf.writeDouble(this.posZ);
-        buf.writeFloat(this.rotationX);
-        buf.writeFloat(this.rotationY);
-        buf.writeFloat(this.rotationZ);
+        this.rot.serialize(buf);
     }
 
     @Override
@@ -51,15 +46,15 @@ public class TrackMessage extends BaseMessage<TrackMessage> {
         this.posX = buf.readDouble();
         this.posY = buf.readDouble();
         this.posZ = buf.readDouble();
-        this.rotationX = buf.readFloat();
-        this.rotationY = buf.readFloat();
-        this.rotationZ = buf.readFloat();
+
+        this.rot = new QuatRotation();
+        this.rot.deserialize(buf);
     }
 
     @Override
     public void onReceiveClient(Minecraft client, WorldClient world, EntityPlayerSP player, MessageContext context) {
         BlockSystem blockSystem = BlockSystems.PROXY.createBlockSystem(world, this.blockSystem);
-        blockSystem.setPositionAndRotation(this.posX, this.posY, this.posZ, this.rotationX, this.rotationY, this.rotationZ);
+        blockSystem.setPositionAndRotation(this.posX, this.posY, this.posZ, this.rot);
         BlockSystems.PROXY.getBlockSystemHandler(world).addBlockSystem(blockSystem);
     }
 

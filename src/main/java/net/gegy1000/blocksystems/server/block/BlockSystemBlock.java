@@ -4,6 +4,7 @@ import net.gegy1000.blocksystems.BlockSystems;
 import net.gegy1000.blocksystems.server.api.DefaultRenderedItem;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
 import net.gegy1000.blocksystems.server.blocksystem.ServerBlockSystemHandler;
+import net.gegy1000.blocksystems.server.util.QuatRotation;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
@@ -29,8 +30,13 @@ public class BlockSystemBlock extends Block implements DefaultRenderedItem {
             if (!world.isRemote) {
                 ServerBlockSystemHandler handler = BlockSystems.PROXY.getBlockSystemHandler(world);
                 BlockSystem blockSystem = BlockSystems.PROXY.createBlockSystem(world, BlockSystem.nextID++);
-                blockSystem.setPositionAndRotation(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, 0.0F, 180.0F - placer.rotationYaw, 0.0F);
+
+                QuatRotation rotation = new QuatRotation();
+                rotation.rotate(180.0 - placer.rotationYaw, 0.0, 1.0, 0.0);
+                blockSystem.setPositionAndRotation(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, rotation);
+
                 handler.addBlockSystem(blockSystem);
+
                 blockSystem.setBlockState(BlockPos.ORIGIN, state, 3);
             }
             return Blocks.AIR.getDefaultState();

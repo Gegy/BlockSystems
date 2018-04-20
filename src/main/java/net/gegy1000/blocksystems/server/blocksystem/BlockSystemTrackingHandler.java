@@ -8,6 +8,7 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.world.WorldServer;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -31,12 +32,11 @@ public class BlockSystemTrackingHandler {
     public void update() {
         long time = this.world.getTotalWorldTime();
         if (time - this.lastUpdate > 4) {
-            Map<Integer, BlockSystem> blockSystems = BlockSystems.PROXY.getBlockSystemHandler(this.world).getBlockSystems();
+            Collection<BlockSystem> blockSystems = BlockSystems.PROXY.getBlockSystemHandler(this.world).getBlockSystems();
             for (EntityPlayer p : this.world.playerEntities) {
                 if (p instanceof EntityPlayerMP) {
                     EntityPlayerMP player = (EntityPlayerMP) p;
-                    for (Map.Entry<Integer, BlockSystem> entry : blockSystems.entrySet()) {
-                        BlockSystem blockSystem = entry.getValue();
+                    for (BlockSystem blockSystem : blockSystems) {
                         if (this.shouldTrack(player, blockSystem)) {
                             this.track(player, blockSystem);
                         }

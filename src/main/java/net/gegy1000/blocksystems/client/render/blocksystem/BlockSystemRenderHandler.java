@@ -1,10 +1,11 @@
 package net.gegy1000.blocksystems.client.render.blocksystem;
 
+import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
+import net.gegy1000.blocksystems.server.util.QuatRotation;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.entity.player.EntityPlayer;
-import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
@@ -54,13 +55,12 @@ public class BlockSystemRenderHandler {
             double entityX = blockSystem.prevPosX + (blockSystem.posX - blockSystem.prevPosX) * partialTicks;
             double entityY = blockSystem.prevPosY + (blockSystem.posY - blockSystem.prevPosY) * partialTicks;
             double entityZ = blockSystem.prevPosZ + (blockSystem.posZ - blockSystem.prevPosZ) * partialTicks;
-            float rotationX = blockSystem.prevRotationX + (blockSystem.rotationX - blockSystem.prevRotationX) * partialTicks;
-            float rotationY = blockSystem.prevRotationY + (blockSystem.rotationY - blockSystem.prevRotationY) * partialTicks;
-            float rotationZ = blockSystem.prevRotationZ + (blockSystem.rotationZ - blockSystem.prevRotationZ) * partialTicks;
+
+            QuatRotation rotation = blockSystem.prevRotation.slerp(blockSystem.rotation, partialTicks);
             int framerate = Math.min(Minecraft.getDebugFPS(), Minecraft.getMinecraft().gameSettings.limitFramerate);
             framerate = Math.max(framerate, 60);
             long finishTimeNano = Math.max((long) (1000000000 / framerate / 4) - System.nanoTime(), 0);
-            renderer.renderBlockSystem(player, entityX - playerX, entityY - playerY, entityZ - playerZ, rotationX, rotationY, rotationZ, partialTicks, finishTimeNano);
+            renderer.renderBlockSystem(player, entityX - playerX, entityY - playerY, entityZ - playerZ, rotation, partialTicks, finishTimeNano);
         }
         GlStateManager.enableCull();
         GlStateManager.cullFace(GlStateManager.CullFace.BACK);

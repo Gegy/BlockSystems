@@ -2,18 +2,22 @@ package net.gegy1000.blocksystems.server.util;
 
 import com.google.common.base.Preconditions;
 import net.minecraft.util.math.Vec3d;
+import org.lwjgl.BufferUtils;
 
 import javax.vecmath.AxisAngle4d;
 import javax.vecmath.Matrix4d;
 import javax.vecmath.Point3d;
 import javax.vecmath.Quat4f;
 import javax.vecmath.Vector3d;
+import java.nio.FloatBuffer;
 import java.util.Stack;
 
 /**
  * @author pau101
  */
 public class Matrix {
+    private static final FloatBuffer MAT_BUFFER = BufferUtils.createFloatBuffer(16);
+
     private Pool<Matrix4d> matrixPool;
 
     private Pool<Vector3d> vectorPool;
@@ -110,6 +114,11 @@ public class Matrix {
         this.freeMatrix(rotation);
     }
 
+    public void rotate(QuatRotation quat) {
+        Matrix4d mat = this.matrixStack.peek();
+        mat.mul(quat.getMatrix());
+    }
+
     public void scale(double x, double y, double z) {
         Matrix4d mat = this.matrixStack.peek();
         Matrix4d scale = this.getMatrix();
@@ -124,6 +133,12 @@ public class Matrix {
     public void transform(Point3d point) {
         Matrix4d mat = this.matrixStack.peek();
         mat.transform(point);
+    }
+
+    public Point3d transform(double x, double y, double z) {
+        Point3d point = new Point3d(x, y, z);
+        this.transform(point);
+        return point;
     }
 
     public Vec3d transformPoint(Vec3d vec) {
@@ -157,5 +172,31 @@ public class Matrix {
 
     public Matrix4d getTransform() {
         return new Matrix4d(this.matrixStack.peek());
+    }
+
+    public static FloatBuffer toBuffer(Matrix4d matrix) {
+        FloatBuffer buffer = MAT_BUFFER;
+
+        buffer.clear();
+        buffer.put((float) matrix.m00);
+        buffer.put((float) matrix.m01);
+        buffer.put((float) matrix.m02);
+        buffer.put((float) matrix.m03);
+        buffer.put((float) matrix.m10);
+        buffer.put((float) matrix.m11);
+        buffer.put((float) matrix.m12);
+        buffer.put((float) matrix.m13);
+        buffer.put((float) matrix.m20);
+        buffer.put((float) matrix.m21);
+        buffer.put((float) matrix.m22);
+        buffer.put((float) matrix.m23);
+        buffer.put((float) matrix.m30);
+        buffer.put((float) matrix.m31);
+        buffer.put((float) matrix.m32);
+        buffer.put((float) matrix.m33);
+
+        buffer.rewind();
+
+        return buffer;
     }
 }

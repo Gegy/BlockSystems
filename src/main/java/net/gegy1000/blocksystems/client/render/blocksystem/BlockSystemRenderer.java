@@ -10,6 +10,8 @@ import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystemPlayerHandler;
 import net.gegy1000.blocksystems.server.blocksystem.ServerBlockSystemHandler;
 import net.gegy1000.blocksystems.server.blocksystem.chunk.BlockSystemChunk;
+import net.gegy1000.blocksystems.server.util.Matrix;
+import net.gegy1000.blocksystems.server.util.QuatRotation;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockChest;
 import net.minecraft.block.BlockEnderChest;
@@ -123,7 +125,7 @@ public class BlockSystemRenderer extends RenderGlobal implements IWorldEventList
         blockSystem.addEventListener(this);
     }
 
-    public void renderBlockSystem(Entity viewEntity, double x, double y, double z, float rotationX, float rotationY, float rotationZ, float partialTicks, long finishTimeNano) {
+    public void renderBlockSystem(Entity viewEntity, double x, double y, double z, QuatRotation rotation, float partialTicks, long finishTimeNano) {
         Point3d untransformed = this.getUntransformedPosition(viewEntity);
 
         this.setup(viewEntity, partialTicks, untransformed);
@@ -131,9 +133,8 @@ public class BlockSystemRenderer extends RenderGlobal implements IWorldEventList
         MC.getTextureManager().bindTexture(TextureMap.LOCATION_BLOCKS_TEXTURE);
         GlStateManager.pushMatrix();
         GlStateManager.translate(x, y, z);
-        GlStateManager.rotate(rotationY, 0.0F, 1.0F, 0.0F);
-        GlStateManager.rotate(rotationX, 1.0F, 0.0F, 0.0F);
-        GlStateManager.rotate(rotationZ, 0.0F, 0.0F, 1.0F);
+
+        GlStateManager.multMatrix(Matrix.toBuffer(rotation.getMatrix()));
         GlStateManager.enableBlend();
         GlStateManager.enableCull();
 

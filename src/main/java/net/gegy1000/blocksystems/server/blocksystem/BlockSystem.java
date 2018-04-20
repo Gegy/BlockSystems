@@ -5,8 +5,9 @@ import com.google.common.base.Predicate;
 import net.gegy1000.blocksystems.BlockSystems;
 import net.gegy1000.blocksystems.server.blocksystem.chunk.BlockSystemChunk;
 import net.gegy1000.blocksystems.server.entity.BlockSystemControlEntity;
+import net.gegy1000.blocksystems.server.util.EncompassingAABB;
 import net.gegy1000.blocksystems.server.util.Matrix;
-import net.gegy1000.blocksystems.server.util.RotatedAABB;
+import net.gegy1000.blocksystems.server.util.QuatRotation;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
@@ -57,12 +58,8 @@ public abstract class BlockSystem extends World {
     public double prevPosY;
     public double prevPosZ;
 
-    public float rotationX;
-    public float rotationY;
-    public float rotationZ;
-    public float prevRotationX;
-    public float prevRotationY;
-    public float prevRotationZ;
+    public QuatRotation rotation = new QuatRotation();
+    public QuatRotation prevRotation = new QuatRotation();
 
     protected World mainWorld;
 
@@ -79,7 +76,7 @@ public abstract class BlockSystem extends World {
     protected int id;
 
     protected AxisAlignedBB maximumBounds = new AxisAlignedBB(-64, 0, -64, 64, 128, 64);
-    protected RotatedAABB rotatedBounds = new RotatedAABB(-64, 0, -64, 64, 128, 64);
+    protected EncompassingAABB rotatedBounds = new EncompassingAABB(this.transformMatrix, this.maximumBounds);
 
     protected Map<ChunkPos, BlockSystemChunk> savedChunks = new HashMap<>();
 
@@ -105,15 +102,13 @@ public abstract class BlockSystem extends World {
     private void recalculateMatrices() {
         this.transformMatrix.setIdentity();
         this.transformMatrix.translate(this.posX, this.posY, this.posZ);
-        this.transformMatrix.rotate(Math.toRadians(this.rotationY), 0.0F, 1.0F, 0.0F);
-        this.transformMatrix.rotate(Math.toRadians(this.rotationX), 1.0F, 0.0F, 0.0F);
-        this.transformMatrix.rotate(Math.toRadians(this.rotationZ), 0.0F, 0.0F, 1.0F);
+        this.transformMatrix.rotate(this.rotation);
 
         this.untransformMatrix.setIdentity();
         this.untransformMatrix.multiply(this.transformMatrix);
         this.untransformMatrix.invert();
 
-        this.rotatedBounds.move(this.posX, this.posY, this.posZ, this.rotationX, this.rotationY, this.rotationZ);
+        this.rotatedBounds.recalculate();
     }
 
     public void deserialize(NBTTagCompound compound) {
@@ -121,9 +116,7 @@ public abstract class BlockSystem extends World {
         this.posX = compound.getDouble("PosX");
         this.posY = compound.getDouble("PosY");
         this.posZ = compound.getDouble("PosZ");
-        this.rotationX = compound.getFloat("RotationX");
-        this.rotationY = compound.getFloat("RotationY");
-        this.rotationZ = compound.getFloat("RotationZ");
+        this.rotation.deserialize(compound.getCompoundTag("Rot"));
         NBTTagList chunksList = compound.getTagList("Chunks", Constants.NBT.TAG_COMPOUND);
         for (int i = 0; i < chunksList.tagCount(); i++) {
             NBTTagCompound chunkTag = chunksList.getCompoundTagAt(i);
@@ -140,9 +133,7 @@ public abstract class BlockSystem extends World {
         compound.setDouble("PosX", this.posX);
         compound.setDouble("PosY", this.posY);
         compound.setDouble("PosZ", this.posZ);
-        compound.setFloat("RotationX", this.rotationX);
-        compound.setFloat("RotationY", this.rotationY);
-        compound.setFloat("RotationZ", this.rotationZ);
+        compound.setTag("Rot", this.rotation.serialize(new NBTTagCompound()));
         NBTTagList chunksList = new NBTTagList();
         for (Map.Entry<ChunkPos, BlockSystemChunk> entry : this.savedChunks.entrySet()) {
             BlockSystemChunk chunk = entry.getValue();
@@ -368,16 +359,14 @@ public abstract class BlockSystem extends World {
         this.prevPosX = this.posX;
         this.prevPosY = this.posY;
         this.prevPosZ = this.posZ;
-        this.prevRotationX = this.rotationX;
-        this.prevRotationY = this.rotationY;
-        this.prevRotationZ = this.rotationZ;
-
-        this.rotationY += 1.5F;
+        this.prevRotation = this.rotation.copy();
 
         super.tick();
 
+        this.rotation.rotate(1.5, 0.0, 1.0, 0.0);
+
         if (this.boundEntity != null) {
-            this.setPositionAndRotation(this.boundEntity.posX, this.boundEntity.posY, this.boundEntity.posZ, this.boundEntity.rotationPitch, this.boundEntity.rotationYaw, this.rotationZ);
+            this.setPositionAndRotation(this.boundEntity.posX, this.boundEntity.posY, this.boundEntity.posZ, this.rotation);
         }
 
         List<EntityPlayer> remove = new ArrayList<>();
@@ -393,7 +382,7 @@ public abstract class BlockSystem extends World {
             this.playerHandlers.remove(player);
         }
 
-        if (this.posX != this.prevPosX || this.posY != this.prevPosY || this.posZ != this.prevPosZ || this.rotationY != this.prevRotationY || this.rotationX != this.prevRotationX || this.rotationZ != this.prevRotationZ) {
+        if (this.posX != this.prevPosX || this.posY != this.prevPosY || this.posZ != this.prevPosZ || !this.rotation.equals(this.prevRotation)) {
             this.recalculateMatrices();
         }
 
@@ -602,13 +591,11 @@ public abstract class BlockSystem extends World {
         return this;
     }
 
-    public void setPositionAndRotation(double posX, double posY, double posZ, float rotationX, float rotationY, float rotationZ) {
+    public void setPositionAndRotation(double posX, double posY, double posZ, QuatRotation rotation) {
         this.posX = posX;
         this.posY = posY;
         this.posZ = posZ;
-        this.rotationX = rotationX;
-        this.rotationY = rotationY;
-        this.rotationZ = rotationZ;
+        this.rotation = rotation;
         this.recalculateMatrices();
     }
 
@@ -616,11 +603,7 @@ public abstract class BlockSystem extends World {
         return this.maximumBounds;
     }
 
-    public boolean intersects(AxisAlignedBB bounds) {
-        return this.rotatedBounds.aabb().intersects(bounds);
-    }
-
-    public RotatedAABB getRotatedBounds() {
+    public EncompassingAABB getRotatedBounds() {
         return this.rotatedBounds;
     }
 

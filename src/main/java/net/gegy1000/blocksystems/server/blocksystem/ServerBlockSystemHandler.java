@@ -1,6 +1,6 @@
 package net.gegy1000.blocksystems.server.blocksystem;
 
-import net.gegy1000.blocksystems.server.util.RotatedAABB;
+import net.gegy1000.blocksystems.server.util.EncompassingAABB;
 import net.gegy1000.blocksystems.server.world.data.BlockSystemSavedData;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
@@ -14,6 +14,7 @@ import net.minecraft.world.World;
 import net.minecraftforge.event.ForgeEventFactory;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -104,8 +105,8 @@ public class ServerBlockSystemHandler {
         Map<BlockSystem, RayTraceResult> results = new HashMap<>();
         for (Map.Entry<Integer, BlockSystem> entry : this.blockSystems.entrySet()) {
             BlockSystem blockSystem = entry.getValue();
-            RotatedAABB bounds = blockSystem.getRotatedBounds();
-            if (bounds.aabb().intersects(player.getEntityBoundingBox().grow(5.0))) {
+            EncompassingAABB bounds = blockSystem.getRotatedBounds();
+            if (bounds.getEncompassing().intersects(player.getEntityBoundingBox().grow(reach + 1.0))) {
                 RayTraceResult result = blockSystem.rayTraceBlocks(start, end);
                 if (result != null && result.typeOfHit != RayTraceResult.Type.MISS) {
                     results.put(blockSystem, result);
@@ -151,6 +152,7 @@ public class ServerBlockSystemHandler {
 
     public void unloadWorld() {
         this.blockSystems.clear();
+        this.mouseOver.clear();
     }
 
     public void removeBlockSystem(BlockSystem blockSystem) {
@@ -164,8 +166,8 @@ public class ServerBlockSystemHandler {
         this.blockSystems.remove(id);
     }
 
-    public Map<Integer, BlockSystem> getBlockSystems() {
-        return this.blockSystems;
+    public Collection<BlockSystem> getBlockSystems() {
+        return this.blockSystems.values();
     }
 
     public BlockSystem getMousedOver(EntityPlayer player) {
