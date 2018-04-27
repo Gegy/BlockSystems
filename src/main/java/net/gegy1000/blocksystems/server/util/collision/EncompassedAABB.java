@@ -1,43 +1,32 @@
-package net.gegy1000.blocksystems.server.util;
+package net.gegy1000.blocksystems.server.util.collision;
 
+import net.gegy1000.blocksystems.BlockSystems;
+import net.gegy1000.blocksystems.server.util.math.Matrix;
 import net.minecraft.util.math.AxisAlignedBB;
 
 import javax.vecmath.Point3d;
 
-public class EncompassingAABB {
-    private final Matrix transformMatrix;
+public class EncompassedAABB implements BoundingBox {
     private final AxisAlignedBB bounds;
 
     private AxisAlignedBB encompassingBounds;
 
-    public EncompassingAABB(Matrix transformMatrix, AxisAlignedBB bounds) {
-        this.transformMatrix = transformMatrix;
+    public EncompassedAABB(AxisAlignedBB bounds) {
         this.bounds = bounds;
     }
 
-    public void recalculate() {
-        Point3d[] transformedPoints = new Point3d[] {
-                this.transformMatrix.transform(this.bounds.minX, this.bounds.minY, this.bounds.minZ),
-                this.transformMatrix.transform(this.bounds.minX, this.bounds.minY, this.bounds.maxZ),
-                this.transformMatrix.transform(this.bounds.minX, this.bounds.maxY, this.bounds.minZ),
-                this.transformMatrix.transform(this.bounds.minX, this.bounds.maxY, this.bounds.maxZ),
-                this.transformMatrix.transform(this.bounds.maxX, this.bounds.minY, this.bounds.minZ),
-                this.transformMatrix.transform(this.bounds.maxX, this.bounds.minY, this.bounds.maxZ),
-                this.transformMatrix.transform(this.bounds.maxX, this.bounds.maxY, this.bounds.minZ),
-                this.transformMatrix.transform(this.bounds.maxX, this.bounds.maxY, this.bounds.maxZ)
-        };
+    public EncompassedAABB(AxisAlignedBB bounds, Matrix transformMatrix) {
+        this(bounds);
+        this.calculate(transformMatrix);
+    }
+
+    public void calculate(Matrix transformMatrix) {
+        Point3d[] transformedPoints = BBVertices.toVertices(this.bounds, transformMatrix::transform);
 
         Point3d min = this.minPoint(transformedPoints);
         Point3d max = this.maxPoint(transformedPoints);
 
         this.encompassingBounds = new AxisAlignedBB(min.x, min.y, min.z, max.x, max.y, max.z);
-    }
-
-    public AxisAlignedBB getEncompassing() {
-        if (this.encompassingBounds == null) {
-            this.recalculate();
-        }
-        return this.encompassingBounds;
     }
 
     private Point3d minPoint(Point3d... points) {
@@ -80,5 +69,19 @@ public class EncompassingAABB {
         }
 
         return new Point3d(maxX, maxY, maxZ);
+    }
+
+    @Override
+    public boolean intersects(AxisAlignedBB box) {
+        return this.getAabb().intersects(box);
+    }
+
+    @Override
+    public AxisAlignedBB getAabb() {
+        if (this.encompassingBounds == null) {
+            BlockSystems.LOGGER.warn("Tried to get encompassing bounds before calculated!");
+            return this.bounds;
+        }
+        return this.encompassingBounds;
     }
 }

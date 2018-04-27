@@ -4,7 +4,7 @@ import net.gegy1000.blocksystems.BlockSystems;
 import net.gegy1000.blocksystems.server.api.DefaultRenderedItem;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
 import net.gegy1000.blocksystems.server.blocksystem.ServerBlockSystemHandler;
-import net.gegy1000.blocksystems.server.util.QuatRotation;
+import net.gegy1000.blocksystems.server.util.math.QuatRotation;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;

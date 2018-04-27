@@ -3,7 +3,7 @@ package net.gegy1000.blocksystems.server.command;
 import net.gegy1000.blocksystems.BlockSystems;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
 import net.gegy1000.blocksystems.server.blocksystem.ServerBlockSystemHandler;
-import net.gegy1000.blocksystems.server.util.QuatRotation;
+import net.gegy1000.blocksystems.server.util.math.QuatRotation;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayer;

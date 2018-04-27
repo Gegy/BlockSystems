@@ -1,6 +1,6 @@
 package net.gegy1000.blocksystems.server.blocksystem;
 
-import net.gegy1000.blocksystems.server.util.EncompassingAABB;
+import net.gegy1000.blocksystems.server.util.collision.EncompassedAABB;
 import net.gegy1000.blocksystems.server.world.data.BlockSystemSavedData;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
@@ -105,8 +105,8 @@ public class ServerBlockSystemHandler {
         Map<BlockSystem, RayTraceResult> results = new HashMap<>();
         for (Map.Entry<Integer, BlockSystem> entry : this.blockSystems.entrySet()) {
             BlockSystem blockSystem = entry.getValue();
-            EncompassingAABB bounds = blockSystem.getRotatedBounds();
-            if (bounds.getEncompassing().intersects(player.getEntityBoundingBox().grow(reach + 1.0))) {
+            EncompassedAABB bounds = blockSystem.getRotatedBounds();
+            if (bounds.intersects(player.getEntityBoundingBox().grow(reach + 1.0))) {
                 RayTraceResult result = blockSystem.rayTraceBlocks(start, end);
                 if (result != null && result.typeOfHit != RayTraceResult.Type.MISS) {
                     results.put(blockSystem, result);

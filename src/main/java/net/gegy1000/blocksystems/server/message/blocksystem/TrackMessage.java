@@ -4,7 +4,7 @@ import io.netty.buffer.ByteBuf;
 import net.gegy1000.blocksystems.BlockSystems;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
 import net.gegy1000.blocksystems.server.message.BaseMessage;
-import net.gegy1000.blocksystems.server.util.QuatRotation;
+import net.gegy1000.blocksystems.server.util.math.QuatRotation;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.multiplayer.WorldClient;

@@ -9,7 +9,6 @@ import net.gegy1000.blocksystems.server.core.BlockSystemHooks;
 import net.gegy1000.blocksystems.server.world.BlockSystemWorldAccess;
 import net.gegy1000.blocksystems.server.world.data.BlockSystemSavedData;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.EnumHand;
@@ -18,8 +17,8 @@ import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
-import net.minecraftforge.event.entity.living.LivingEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
+import net.minecraftforge.event.world.GetCollisionBoxesEvent;
 import net.minecraftforge.event.world.WorldEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
@@ -48,17 +47,29 @@ public class ServerEventHandler {
         }
     }
 
-    @SubscribeEvent
+    // TODO: Add back with OBB collision
+/*    @SubscribeEvent
     public static void onEntityTick(LivingEvent.LivingUpdateEvent event) {
         EntityLivingBase entity = event.getEntityLiving();
         AxisAlignedBB entityBounds = entity.getEntityBoundingBox();
+    }*/
 
-        // TODO: This is O(n) and not ideal
-        Collection<BlockSystem> blockSystems = BlockSystems.PROXY.getBlockSystemHandler(entity.world).getBlockSystems();
-        for (BlockSystem blockSystem : blockSystems) {
-            // TODO: Keep track of bounds that are being *used*, not just the maximum bounds for the whole blocksystem
-            AxisAlignedBB encompassing = blockSystem.getRotatedBounds().getEncompassing();
-            if (entityBounds.intersects(encompassing)) {
+    @SubscribeEvent
+    public static void onCollectCollisionBoxes(GetCollisionBoxesEvent event) {
+        World world = event.getWorld();
+        if (!(world instanceof BlockSystem)) {
+            Entity entity = event.getEntity();
+            AxisAlignedBB entityBounds = event.getAabb();
+
+            // TODO: This is O(n) and not ideal
+            ServerBlockSystemHandler handler = BlockSystems.PROXY.getBlockSystemHandler(world);
+            Collection<BlockSystem> blockSystems = handler.getBlockSystems();
+            for (BlockSystem blockSystem : blockSystems) {
+                // TODO: Keep track of bounds that are being *used*, not just the maximum bounds for the whole blocksystem
+                AxisAlignedBB encompassing = blockSystem.getRotatedBounds().getAabb();
+                if (entityBounds.intersects(encompassing)) {
+                    event.getCollisionBoxesList().addAll(blockSystem.getCollisionBoxes(entity, entityBounds));
+                }
             }
         }
     }

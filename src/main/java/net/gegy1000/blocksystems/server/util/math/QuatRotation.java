@@ -1,6 +1,7 @@
-package net.gegy1000.blocksystems.server.util;
+package net.gegy1000.blocksystems.server.util.math;
 
 import io.netty.buffer.ByteBuf;
+import net.gegy1000.blocksystems.server.util.Pool;
 import net.minecraft.nbt.NBTTagCompound;
 
 import javax.vecmath.AxisAngle4d;

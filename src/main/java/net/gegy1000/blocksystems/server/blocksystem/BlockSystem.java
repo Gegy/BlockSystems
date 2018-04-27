@@ -5,9 +5,9 @@ import com.google.common.base.Predicate;
 import net.gegy1000.blocksystems.BlockSystems;
 import net.gegy1000.blocksystems.server.blocksystem.chunk.BlockSystemChunk;
 import net.gegy1000.blocksystems.server.entity.BlockSystemControlEntity;
-import net.gegy1000.blocksystems.server.util.EncompassingAABB;
-import net.gegy1000.blocksystems.server.util.Matrix;
-import net.gegy1000.blocksystems.server.util.QuatRotation;
+import net.gegy1000.blocksystems.server.util.collision.EncompassedAABB;
+import net.gegy1000.blocksystems.server.util.math.Matrix;
+import net.gegy1000.blocksystems.server.util.math.QuatRotation;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
@@ -34,10 +34,13 @@ import net.minecraft.world.World;
 import net.minecraft.world.WorldType;
 import net.minecraft.world.biome.Biome;
 import net.minecraft.world.chunk.Chunk;
+import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.util.Constants;
+import net.minecraftforge.event.world.GetCollisionBoxesEvent;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
+import javax.annotation.Nullable;
 import javax.vecmath.Point3d;
 import javax.vecmath.Vector3d;
 import java.util.ArrayList;
@@ -76,7 +79,7 @@ public abstract class BlockSystem extends World {
     protected int id;
 
     protected AxisAlignedBB maximumBounds = new AxisAlignedBB(-64, 0, -64, 64, 128, 64);
-    protected EncompassingAABB rotatedBounds = new EncompassingAABB(this.transformMatrix, this.maximumBounds);
+    protected EncompassedAABB rotatedBounds = new EncompassedAABB(this.maximumBounds);
 
     protected Map<ChunkPos, BlockSystemChunk> savedChunks = new HashMap<>();
 
@@ -102,22 +105,24 @@ public abstract class BlockSystem extends World {
     private void recalculateMatrices() {
         this.transformMatrix.setIdentity();
         this.transformMatrix.translate(this.posX, this.posY, this.posZ);
-        this.transformMatrix.rotate(this.rotation);
+        // TODO: No idea why but this only works with the inverse?
+        this.transformMatrix.rotateInverse(this.rotation);
+        this.transformMatrix.translate(-0.5, 0.0, -0.5);
 
         this.untransformMatrix.setIdentity();
         this.untransformMatrix.multiply(this.transformMatrix);
         this.untransformMatrix.invert();
 
-        this.rotatedBounds.recalculate();
+        this.rotatedBounds.calculate(this.transformMatrix);
     }
 
     public void deserialize(NBTTagCompound compound) {
         this.deserializing = true;
-        this.posX = compound.getDouble("PosX");
-        this.posY = compound.getDouble("PosY");
-        this.posZ = compound.getDouble("PosZ");
-        this.rotation.deserialize(compound.getCompoundTag("Rot"));
-        NBTTagList chunksList = compound.getTagList("Chunks", Constants.NBT.TAG_COMPOUND);
+        this.posX = compound.getDouble("pos_x");
+        this.posY = compound.getDouble("pos_y");
+        this.posZ = compound.getDouble("pos_z");
+        this.rotation.deserialize(compound.getCompoundTag("rot"));
+        NBTTagList chunksList = compound.getTagList("chunks", Constants.NBT.TAG_COMPOUND);
         for (int i = 0; i < chunksList.tagCount(); i++) {
             NBTTagCompound chunkTag = chunksList.getCompoundTagAt(i);
             ChunkPos pos = new ChunkPos(chunkTag.getInteger("x"), chunkTag.getInteger("z"));
@@ -130,10 +135,10 @@ public abstract class BlockSystem extends World {
     }
 
     public NBTTagCompound serialize(NBTTagCompound compound) {
-        compound.setDouble("PosX", this.posX);
-        compound.setDouble("PosY", this.posY);
-        compound.setDouble("PosZ", this.posZ);
-        compound.setTag("Rot", this.rotation.serialize(new NBTTagCompound()));
+        compound.setDouble("pos_x", this.posX);
+        compound.setDouble("pos_y", this.posY);
+        compound.setDouble("pos_z", this.posZ);
+        compound.setTag("rot", this.rotation.serialize(new NBTTagCompound()));
         NBTTagList chunksList = new NBTTagList();
         for (Map.Entry<ChunkPos, BlockSystemChunk> entry : this.savedChunks.entrySet()) {
             BlockSystemChunk chunk = entry.getValue();
@@ -146,18 +151,17 @@ public abstract class BlockSystem extends World {
                 chunksList.appendTag(chunkTag);
             }
         }
-        compound.setTag("Chunks", chunksList);
+        compound.setTag("chunks", chunksList);
         return compound;
     }
 
     public Point3d getTransformedPosition(Point3d position) {
-        position.sub(new Point3d(0.5, 0.0, 0.5));
         this.transformMatrix.transform(position);
         return position;
     }
 
     public Vec3d getTransformedPosition(Vec3d position) {
-        Point3d point = new Point3d(position.x - 0.5, position.y, position.z - 0.5);
+        Point3d point = new Point3d(position.x, position.y, position.z);
         this.transformMatrix.transform(point);
         return new Vec3d(point.getX(), point.getY(), point.getZ());
     }
@@ -169,14 +173,13 @@ public abstract class BlockSystem extends World {
 
     public Point3d getUntransformedPosition(Point3d position) {
         this.untransformMatrix.transform(position);
-        position.add(new Point3d(0.5, 0.0, 0.5));
         return position;
     }
 
     public Vec3d getUntransformedPosition(Vec3d position) {
         Point3d point = new Point3d(position.x, position.y, position.z);
         this.untransformMatrix.transform(point);
-        return new Vec3d(point.getX() + 0.5, point.getY(), point.getZ() + 0.5);
+        return new Vec3d(point.getX(), point.getY(), point.getZ());
     }
 
     public BlockPos getUntransformedPosition(BlockPos pos) {
@@ -363,7 +366,7 @@ public abstract class BlockSystem extends World {
 
         super.tick();
 
-        this.rotation.rotate(1.5, 0.0, 1.0, 0.0);
+        this.rotation.rotate(0.8, 0.0, 1.0, 0.0);
 
         if (this.boundEntity != null) {
             this.setPositionAndRotation(this.boundEntity.posX, this.boundEntity.posY, this.boundEntity.posZ, this.rotation);
@@ -539,6 +542,51 @@ public abstract class BlockSystem extends World {
         super.playSound(player, x, y, z, sound, category, volume, pitch);
     }
 
+    @Override
+    public List<AxisAlignedBB> getCollisionBoxes(@Nullable Entity entity, AxisAlignedBB aabb) {
+        List<AxisAlignedBB> collisionBoxes = new ArrayList<>();
+        this.getCollisionBoxes(entity, aabb, collisionBoxes);
+        MinecraftForge.EVENT_BUS.post(new GetCollisionBoxesEvent(this, entity, aabb, collisionBoxes));
+        return collisionBoxes;
+    }
+
+    private void getCollisionBoxes(Entity entity, AxisAlignedBB aabb, List<AxisAlignedBB> collisionBoxes) {
+        AxisAlignedBB transformedAabb = new EncompassedAABB(aabb, this.untransformMatrix).getAabb();
+
+        int minX = MathHelper.floor(transformedAabb.minX) - 1;
+        int maxX = MathHelper.ceil(transformedAabb.maxX) + 1;
+        int minY = MathHelper.floor(transformedAabb.minY) - 1;
+        int maxY = MathHelper.ceil(transformedAabb.maxY) + 1;
+        int minZ = MathHelper.floor(transformedAabb.minZ) - 1;
+        int maxZ = MathHelper.ceil(transformedAabb.maxZ) + 1;
+
+        BlockPos.MutableBlockPos currentPos = new BlockPos.MutableBlockPos();
+
+        List<AxisAlignedBB> generatedBoxes = new ArrayList<>();
+
+        for (int z = minZ; z < maxZ; z++) {
+            for (int x = minX; x < maxX; x++) {
+                if (this.isChunkLoaded(x >> 4, z >> 4, false)) {
+                    for (int y = minY; y < maxY; y++) {
+                        currentPos.setPos(x, y, z);
+
+                        IBlockState state = this.getBlockState(currentPos);
+
+                        state.addCollisionBoxToList(this, currentPos, TileEntity.INFINITE_EXTENT_AABB, generatedBoxes, entity, false);
+                        for (AxisAlignedBB generated : generatedBoxes) {
+                            AxisAlignedBB transformed = new EncompassedAABB(generated, this.transformMatrix).getAabb();
+                            if (aabb.intersects(transformed)) {
+                                collisionBoxes.add(transformed);
+                            }
+                        }
+
+                        generatedBoxes.clear();
+                    }
+                }
+            }
+        }
+    }
+
     public List<IWorldEventListener> getListeners() {
         return this.eventListeners;
     }
@@ -603,7 +651,7 @@ public abstract class BlockSystem extends World {
         return this.maximumBounds;
     }
 
-    public EncompassingAABB getRotatedBounds() {
+    public EncompassedAABB getRotatedBounds() {
         return this.rotatedBounds;
     }
 

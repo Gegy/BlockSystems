@@ -10,8 +10,8 @@ import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystemPlayerHandler;
 import net.gegy1000.blocksystems.server.blocksystem.ServerBlockSystemHandler;
 import net.gegy1000.blocksystems.server.blocksystem.chunk.BlockSystemChunk;
-import net.gegy1000.blocksystems.server.util.Matrix;
-import net.gegy1000.blocksystems.server.util.QuatRotation;
+import net.gegy1000.blocksystems.server.util.math.Matrix;
+import net.gegy1000.blocksystems.server.util.math.QuatRotation;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockChest;
 import net.minecraft.block.BlockEnderChest;
@@ -138,14 +138,14 @@ public class BlockSystemRenderer extends RenderGlobal implements IWorldEventList
         GlStateManager.enableBlend();
         GlStateManager.enableCull();
 
+        GlStateManager.translate(-0.5, 0.0, -0.5);
+
         if (MC.getRenderManager().isDebugBoundingBox()) {
             GlStateManager.pushMatrix();
             GlStateManager.disableTexture2D();
             GlStateManager.disableLighting();
             AxisAlignedBB bounds = this.blockSystem.getMaximumBounds();
-            GlStateManager.translate(0.0, 0.5, 0.0);
-            RenderGlobal.drawBoundingBox(-0.5, -0.5, -0.5, 0.5, 0.5, 0.5, 1.0F, 0.0F, 1.0F, 1.0F);
-            GlStateManager.translate(-0.5, -0.5, -0.5);
+            RenderGlobal.drawBoundingBox(0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0F, 0.0F, 1.0F, 1.0F);
             for (int chunkX = (int) bounds.minX; chunkX < bounds.maxX; chunkX += 16) {
                 for (int chunkZ = (int) bounds.minZ; chunkZ < bounds.maxZ; chunkZ += 16) {
                     Chunk chunk = this.blockSystem.getChunkFromChunkCoords(chunkX >> 4, chunkZ >> 4);
@@ -158,8 +158,6 @@ public class BlockSystemRenderer extends RenderGlobal implements IWorldEventList
             GlStateManager.enableTexture2D();
             GlStateManager.popMatrix();
         }
-
-        GlStateManager.translate(-0.5, 0.0, -0.5);
 
         MC.entityRenderer.enableLightmap();
 

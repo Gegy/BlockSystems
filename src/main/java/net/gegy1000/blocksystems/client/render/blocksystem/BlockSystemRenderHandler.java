@@ -1,7 +1,7 @@
 package net.gegy1000.blocksystems.client.render.blocksystem;
 
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
-import net.gegy1000.blocksystems.server.util.QuatRotation;
+import net.gegy1000.blocksystems.server.util.math.QuatRotation;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.RenderHelper;

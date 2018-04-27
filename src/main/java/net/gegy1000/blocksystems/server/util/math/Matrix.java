@@ -1,6 +1,7 @@
-package net.gegy1000.blocksystems.server.util;
+package net.gegy1000.blocksystems.server.util.math;
 
 import com.google.common.base.Preconditions;
+import net.gegy1000.blocksystems.server.util.Pool;
 import net.minecraft.util.math.Vec3d;
 import org.lwjgl.BufferUtils;
 
@@ -117,6 +118,13 @@ public class Matrix {
     public void rotate(QuatRotation quat) {
         Matrix4d mat = this.matrixStack.peek();
         mat.mul(quat.getMatrix());
+    }
+
+    public void rotateInverse(QuatRotation quat) {
+        Matrix4d mat = this.matrixStack.peek();
+        Matrix4d matrix = new Matrix4d();
+        matrix.invert(quat.getMatrix());
+        mat.mul(matrix);
     }
 
     public void scale(double x, double y, double z) {
