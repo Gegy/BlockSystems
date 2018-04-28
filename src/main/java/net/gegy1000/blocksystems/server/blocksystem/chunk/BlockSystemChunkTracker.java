@@ -59,14 +59,13 @@ public class BlockSystemChunkTracker {
                     if (iterator.hasNext()) {
                         BlockSystemPlayerTracker tracker = iterator.next();
                         Chunk chunk = tracker.getProvidingChunk();
-                        if (chunk != null) {
-                            if (!chunk.isLightPopulated() && chunk.isTerrainPopulated() || !chunk.wasTicked()) {
-                                return chunk;
-                            }
-                            if (!tracker.hasPlayerMatchingInRange(128.0, BlockSystemChunkTracker.NOT_SPECTATOR)) {
-                                continue;
-                            }
-                        } else {
+                        if (chunk == null) {
+                            continue;
+                        }
+                        if (!chunk.isLightPopulated() && chunk.isTerrainPopulated() || !chunk.wasTicked()) {
+                            return chunk;
+                        }
+                        if (!tracker.hasPlayerMatchingInRange(128.0, BlockSystemChunkTracker.NOT_SPECTATOR)) {
                             continue;
                         }
                         return chunk;
@@ -80,7 +79,7 @@ public class BlockSystemChunkTracker {
     public void tick() {
         long worldTime = this.blockSystem.getMainWorld().getTotalWorldTime();
 
-        if (worldTime - this.previousTotalWorldTime > 8000L) {
+        if (worldTime - this.previousTotalWorldTime > 8000) {
             this.previousTotalWorldTime = worldTime;
             for (BlockSystemPlayerTracker tracker : this.playerTrackerList) {
                 tracker.update();
@@ -97,12 +96,12 @@ public class BlockSystemChunkTracker {
 
         if (this.sortMissingChunks && worldTime % 4 == 0) {
             this.sortMissingChunks = false;
-            (this.requestQueue).sort((tracker1, tracker2) -> ComparisonChain.start().compare(tracker1.getClosestPlayerDistance(), tracker2.getClosestPlayerDistance()).result());
+            this.requestQueue.sort((tracker1, tracker2) -> ComparisonChain.start().compare(tracker1.getClosestPlayerDistance(), tracker2.getClosestPlayerDistance()).result());
         }
 
         if (this.sortSendToPlayers && worldTime % 4 == 2) {
             this.sortSendToPlayers = false;
-            (this.sendQueue).sort((tracker1, tracker2) -> ComparisonChain.start().compare(tracker1.getClosestPlayerDistance(), tracker2.getClosestPlayerDistance()).result());
+            this.sendQueue.sort((tracker1, tracker2) -> ComparisonChain.start().compare(tracker1.getClosestPlayerDistance(), tracker2.getClosestPlayerDistance()).result());
         }
 
         if (!this.requestQueue.isEmpty()) {
@@ -219,48 +218,6 @@ public class BlockSystemChunkTracker {
         int deltaX = x1 - x2;
         int deltaZ = z1 - z2;
         return (deltaX >= -radius && deltaX <= radius) && (deltaZ >= -radius && deltaZ <= radius);
-    }
-
-    public void updateMountedMovingPlayer(EntityPlayerMP player) {
-        BlockSystemPlayerHandler handler = BlockSystems.PROXY.getBlockSystemHandler(player.world).get(this.blockSystem, player);
-        Point3d playerPosition = this.getUntransformedPosition(player);
-        int playerChunkX = (int) playerPosition.getX() >> 4;
-        int playerChunkZ = (int) playerPosition.getZ() >> 4;
-        double managedPosX = handler.getManagedPosX();
-        double managedPosZ = handler.getManagedPosZ();
-        double managedDeltaX = managedPosX - playerPosition.getX();
-        double managedDeltaZ = managedPosZ - playerPosition.getZ();
-        double managedDelta = managedDeltaX * managedDeltaX + managedDeltaZ * managedDeltaZ;
-        if (managedDelta >= 64.0D) {
-            int managedChunkX = (int) managedPosX >> 4;
-            int managedChunkZ = (int) managedPosZ >> 4;
-            int viewRadius = this.playerViewRadius;
-            int deltaChunkX = playerChunkX - managedChunkX;
-            int deltaChunkZ = playerChunkZ - managedChunkZ;
-            if (deltaChunkX != 0 || deltaChunkZ != 0) {
-                for (int chunkX = playerChunkX - viewRadius; chunkX <= playerChunkX + viewRadius; ++chunkX) {
-                    for (int chunkZ = playerChunkZ - viewRadius; chunkZ <= playerChunkZ + viewRadius; ++chunkZ) {
-                        if (!this.intersects(chunkX, chunkZ, managedChunkX, managedChunkZ, viewRadius)) {
-                            this.getOrCreateTracker(chunkX, chunkZ).addPlayer(player);
-                        }
-                        if (!this.intersects(chunkX - deltaChunkX, chunkZ - deltaChunkZ, playerChunkX, playerChunkZ, viewRadius)) {
-                            BlockSystemPlayerTracker tracker = this.getTracker(chunkX - deltaChunkX, chunkZ - deltaChunkZ);
-                            if (tracker != null) {
-                                tracker.removePlayer(player);
-                            }
-                        }
-                    }
-                }
-                handler.setManagedPosX(playerPosition.getX());
-                handler.setManagedPosZ(playerPosition.getZ());
-                this.markSortPending();
-            }
-        }
-    }
-
-    public boolean isPlayerWatchingChunk(EntityPlayerMP player, int chunkX, int chunkZ) {
-        BlockSystemPlayerTracker tracker = this.getTracker(chunkX, chunkZ);
-        return tracker != null && tracker.containsPlayer(player) && tracker.isSentToPlayers();
     }
 
     public void setPlayerViewRadius(int radius) {

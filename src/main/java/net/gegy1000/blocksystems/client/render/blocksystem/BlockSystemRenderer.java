@@ -58,7 +58,6 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.util.vector.Vector3f;
 
 import javax.vecmath.Point3d;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -90,7 +89,6 @@ public class BlockSystemRenderer extends RenderGlobal implements IWorldEventList
 
     private BlockSystemViewFrustum viewFrustum;
 
-    private final Set<TileEntity> blockEntities = Sets.newHashSet();
     private Set<RenderChunk> queuedChunkUpdates = Sets.newLinkedHashSet();
     private List<ChunkRenderInformation> chunkRenderInformation = Lists.newArrayListWithCapacity(0x11040);
 
@@ -264,27 +262,18 @@ public class BlockSystemRenderer extends RenderGlobal implements IWorldEventList
 
         for (ChunkRenderInformation information : this.chunkRenderInformation) {
             List<TileEntity> blockEntities = information.chunk.getCompiledChunk().getTileEntities();
-            if (!blockEntities.isEmpty()) {
-                for (TileEntity blockEntity : blockEntities) {
-//                    if (camera.isBoundingBoxInFrustum(blockEntity.getRenderBoundingBox())) {
-                    BlockPos pos = blockEntity.getPos();
-                    BlockSystemChunk chunk = this.blockSystem.getChunkFromPartition(pos);
-                    if (chunk != null) {
-                        ChunkPos chunkPos = chunk.getPos();
-                        int x = chunkPos.getXStart() + (pos.getX() & 0xF);
-                        int z = chunkPos.getZStart() + (pos.getZ() & 0xF);
-                        TileEntityRendererDispatcher.instance.render(blockEntity, x, pos.getY(), z, partialTicks, -1);
-                    }
+            for (TileEntity blockEntity : blockEntities) {
+//                    if (!camera.isBoundingBoxInFrustum(blockEntity.getRenderBoundingBox())) {
+//                        continue;
 //                    }
-                }
-            }
-        }
-        synchronized (this.blockEntities) {
-            for (TileEntity blockEntity : this.blockEntities) {
-//                if (!camera.isBoundingBoxInFrustum(blockEntity.getRenderBoundingBox())) {
                 BlockPos pos = blockEntity.getPos();
-                TileEntityRendererDispatcher.instance.render(blockEntity, pos.getX(), pos.getY(), pos.getZ(), partialTicks, -1);
-//                }
+                BlockSystemChunk chunk = this.blockSystem.getPartitionChunk(new ChunkPos(pos));
+                if (chunk != null) {
+                    ChunkPos chunkPos = chunk.getPos();
+                    int x = chunkPos.getXStart() + (pos.getX() & 0xF);
+                    int z = chunkPos.getZStart() + (pos.getZ() & 0xF);
+                    TileEntityRendererDispatcher.instance.render(blockEntity, x, pos.getY(), z, partialTicks);
+                }
             }
         }
 
@@ -408,7 +397,7 @@ public class BlockSystemRenderer extends RenderGlobal implements IWorldEventList
         }
     }
 
-    public int renderBlockLayer(BlockRenderLayer layer, Point3d untransformed) {
+    public void renderBlockLayer(BlockRenderLayer layer, Point3d untransformed) {
         RenderHelper.disableStandardItemLighting();
         if (layer == BlockRenderLayer.TRANSLUCENT) {
             double deltaX = untransformed.x - this.prevRenderSortX;
@@ -426,7 +415,6 @@ public class BlockSystemRenderer extends RenderGlobal implements IWorldEventList
                 }
             }
         }
-        int count = 0;
         boolean isTranslucent = layer == BlockRenderLayer.TRANSLUCENT;
         int start = isTranslucent ? this.chunkRenderInformation.size() - 1 : 0;
         int target = isTranslucent ? -1 : this.chunkRenderInformation.size();
@@ -434,12 +422,10 @@ public class BlockSystemRenderer extends RenderGlobal implements IWorldEventList
         for (int i = start; i != target; i += increment) {
             RenderChunk chunk = this.chunkRenderInformation.get(i).chunk;
             if (!chunk.getCompiledChunk().isLayerEmpty(layer)) {
-                ++count;
                 this.chunkContainer.addChunk(chunk);
             }
         }
         this.renderBlockLayer(layer);
-        return count;
     }
 
     private void renderBlockLayer(BlockRenderLayer layer) {
@@ -512,14 +498,6 @@ public class BlockSystemRenderer extends RenderGlobal implements IWorldEventList
 
     public void delete() {
         this.viewFrustum.delete();
-    }
-
-    @Override
-    public void updateTileEntities(Collection<TileEntity> remove, Collection<TileEntity> add) {
-        synchronized (this.blockEntities) {
-            this.blockEntities.removeAll(remove);
-            this.blockEntities.addAll(add);
-        }
     }
 
     private RenderChunk getOffsetChunk(BlockPos pos, RenderChunk chunk, EnumFacing facing) {

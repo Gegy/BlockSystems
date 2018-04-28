@@ -197,20 +197,20 @@ public class BlockSystemPlayerTracker {
                     if (state.getBlock().hasTileEntity(state)) {
                         this.updateBlockEntity(this.blockSystem.getTileEntity(changedPos));
                     }
-                } else if (this.changeCount >= ForgeModContainer.clumpingThreshold) {
-                    this.sendMessage(new ChunkMessage(this.blockSystem, this.providingChunk, this.changedSectionMask));
-                } else {
+                } else if (this.changeCount < ForgeModContainer.clumpingThreshold) {
                     this.sendMessage(new MultiBlockUpdateMessage(this.blockSystem, this.providingChunk, this.changeCount, this.changedBlocks));
-                    for (int change = 0; change < this.changeCount; ++change) {
-                        int x = (this.changedBlocks[change] >> 12 & 15) + this.chunkPosition.x * 16;
+                    for (int change = 0; change < this.changeCount; change++) {
+                        int x = (this.changedBlocks[change] >> 12 & 15) + this.chunkPosition.getXStart();
                         int y = this.changedBlocks[change] & 255;
-                        int z = (this.changedBlocks[change] >> 8 & 15) + this.chunkPosition.z * 16;
+                        int z = (this.changedBlocks[change] >> 8 & 15) + this.chunkPosition.getZStart();
                         BlockPos changedPos = new BlockPos(x, y, z);
                         IBlockState state = this.blockSystem.getBlockState(changedPos);
                         if (state.getBlock().hasTileEntity(state)) {
                             this.updateBlockEntity(this.blockSystem.getTileEntity(changedPos));
                         }
                     }
+                } else {
+                    this.sendMessage(new ChunkMessage(this.blockSystem, this.providingChunk, this.changedSectionMask));
                 }
                 this.changeCount = 0;
                 this.changedSectionMask = 0;

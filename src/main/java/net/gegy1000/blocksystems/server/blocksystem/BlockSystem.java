@@ -55,7 +55,7 @@ public abstract class BlockSystem extends World {
     public QuatRotation rotation = new QuatRotation();
     public QuatRotation prevRotation = new QuatRotation();
 
-    protected World mainWorld;
+    protected final World mainWorld;
 
     protected Matrix transformMatrix = new Matrix(3);
     protected Matrix untransformMatrix = new Matrix(3);
@@ -72,7 +72,8 @@ public abstract class BlockSystem extends World {
     protected AxisAlignedBB maximumBounds = new AxisAlignedBB(-64, 0, -64, 64, 128, 64);
     protected EncompassedAABB rotatedBounds = new EncompassedAABB(this.maximumBounds);
 
-    protected Map<ChunkPos, BlockSystemChunk> savedChunks = new HashMap<>();
+    protected final Map<ChunkPos, BlockSystemChunk> savedChunks = new HashMap<>();
+    protected final Map<ChunkPos, BlockSystemChunk> partitionChunks = new HashMap<>();
 
     public BlockSystem(World mainWorld, int id, MinecraftServer server) {
         super(new BlockSystemSaveHandler(), mainWorld.getWorldInfo(), mainWorld.provider, mainWorld.profiler, mainWorld.isRemote);
@@ -357,7 +358,8 @@ public abstract class BlockSystem extends World {
 
         super.tick();
 
-        boolean rotate=true;
+        // TODO: Big performance loss with this enabled -- optimize!
+        /*boolean rotate=true;
 
         List<AxisAlignedBB> bbs=getCollisionBoxes(null,maximumBounds.offset(posX,posY,posZ  ));
         for(AxisAlignedBB bb : bbs) {
@@ -374,7 +376,7 @@ public abstract class BlockSystem extends World {
             }
         }
 
-        if(rotate)
+        if(rotate)*/
         this.rotation.rotate(0.5, 0.0, 1.0, 0.0);
 
         if (this.boundEntity != null) {
@@ -612,6 +614,14 @@ public abstract class BlockSystem extends World {
         this.removeSavedChunk(new ChunkPos(chunk.x, chunk.z));
     }
 
+    public void addPartition(BlockSystemChunk chunk) {
+        this.partitionChunks.put(chunk.getPartitionPosition(), chunk);
+    }
+
+    public void removePartition(ChunkPos chunk) {
+        this.partitionChunks.remove(chunk);
+    }
+
     public void removeSavedChunk(ChunkPos pos) {
         this.savedChunks.remove(pos);
         if (this.savedChunks.size() <= 0 && this.mainWorld.isRemote) {
@@ -632,6 +642,10 @@ public abstract class BlockSystem extends World {
 
     public BlockSystemChunk getSavedChunk(ChunkPos pos) {
         return this.savedChunks.get(pos);
+    }
+
+    public BlockSystemChunk getPartitionChunk(ChunkPos pos) {
+        return this.partitionChunks.get(pos);
     }
 
     @Override
@@ -662,15 +676,5 @@ public abstract class BlockSystem extends World {
 
     public EncompassedAABB getRotatedBounds() {
         return this.rotatedBounds;
-    }
-
-    public BlockSystemChunk getChunkFromPartition(BlockPos pos) {
-        for (Map.Entry<ChunkPos, BlockSystemChunk> entry : this.savedChunks.entrySet()) {
-            BlockSystemChunk chunk = entry.getValue();
-            if (chunk.getPartitionPosition().equals(pos)) {
-                return chunk;
-            }
-        }
-        return null;
     }
 }

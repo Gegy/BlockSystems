@@ -43,7 +43,7 @@ public class ClientBlockSystemChunk extends BlockSystemChunk {
         if (tile == null) {
             if (type == Chunk.EnumCreateEntityType.IMMEDIATE) {
                 tile = this.createNewTileEntity(position);
-                this.mainWorld.setTileEntity(position, tile);
+                this.blockSystem.setTileEntity(position, tile);
             } else if (type == Chunk.EnumCreateEntityType.QUEUED) {
                 this.tileEntityPosQueue.add(position.toImmutable());
             }

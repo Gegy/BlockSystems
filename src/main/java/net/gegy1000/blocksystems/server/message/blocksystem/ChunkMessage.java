@@ -16,6 +16,7 @@ import net.minecraft.network.PacketBuffer;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.WorldProviderSurface;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.chunk.Chunk;
@@ -31,7 +32,7 @@ public class ChunkMessage extends BaseMessage<ChunkMessage> {
     private int blockSystem;
     private int x;
     private int z;
-    private BlockPos partitionPosition;
+    private ChunkPos partitionPosition;
     private int availableSections;
     private byte[] buffer;
     private List<NBTTagCompound> tileEntityTags;
@@ -69,7 +70,8 @@ public class ChunkMessage extends BaseMessage<ChunkMessage> {
         buf.writeInt(this.availableSections);
         buf.writeInt(this.buffer.length);
         buf.writeBytes(this.buffer);
-        buf.writeLong(this.partitionPosition.toLong());
+        buf.writeInt(this.partitionPosition.x);
+        buf.writeInt(this.partitionPosition.z);
         buf.writeInt(this.tileEntityTags.size());
         for (NBTTagCompound tag : this.tileEntityTags) {
             ByteBufUtils.writeTag(buf, tag);
@@ -86,7 +88,7 @@ public class ChunkMessage extends BaseMessage<ChunkMessage> {
         int bufferSize = buf.readInt();
         this.buffer = new byte[bufferSize];
         buf.readBytes(this.buffer);
-        this.partitionPosition = BlockPos.fromLong(buf.readLong());
+        this.partitionPosition = new ChunkPos(buf.readInt(), buf.readInt());
         int tileCount = buf.readInt();
         this.tileEntityTags = Lists.newArrayList();
         for (int i = 0; i < tileCount; i++) {
@@ -110,8 +112,11 @@ public class ChunkMessage extends BaseMessage<ChunkMessage> {
                 chunk.resetRelightChecks();
             }
             for (NBTTagCompound tag : this.tileEntityTags) {
-                BlockPos pos = new BlockPos(tag.getInteger("x"), tag.getInteger("y"), tag.getInteger("z"));
-                TileEntity tile = clientSystem.getTileEntity(pos);
+                int x = tag.getInteger("x");
+                int y = tag.getInteger("y");
+                int z = tag.getInteger("z");
+                BlockSystemChunk partitionChunk = clientSystem.getPartitionChunk(new ChunkPos(x >> 4, z >> 4));
+                TileEntity tile = clientSystem.getTileEntity(new BlockPos((x & 0xF) + (partitionChunk.x << 4), y & 0xFF, (z & 0xF) + (partitionChunk.z << 4)));
                 if (tile != null) {
                     tile.handleUpdateTag(tag);
                 }

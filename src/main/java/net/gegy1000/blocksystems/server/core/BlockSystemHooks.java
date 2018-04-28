@@ -12,6 +12,7 @@ import net.minecraft.client.renderer.chunk.ChunkCompileTaskGenerator;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
@@ -56,14 +57,20 @@ public class BlockSystemHooks {
     }
 
     public static boolean checkBlockAccess(World world, BlockPos pos) {
+        if (world instanceof BlockSystem) {
+            return false;
+        }
         boolean outsideWorldHeight = pos.getY() < 0 || pos.getY() >= 256;
         boolean partitionSpace = pos.getX() <= -29999999 || pos.getX() >= 29999984 || pos.getZ() <= -29999999 || pos.getZ() >= 29999984;
-        return outsideWorldHeight || (partitionSpace && !BlockSystemWorldAccess.canAccess(world) && !(world instanceof BlockSystem));
+        return outsideWorldHeight || partitionSpace && !BlockSystemWorldAccess.canAccess(world);
     }
 
     public static boolean checkChunkAccess(World world, int x, int z, boolean override) {
+        if (world instanceof BlockSystem) {
+            return false;
+        }
         boolean partitionSpace = x <= -1875000 || x > 1874999 || z <= -1875000 || z > 1874999;
-        return partitionSpace && (!BlockSystemWorldAccess.canAccess(world) || override) && !(world instanceof BlockSystem);
+        return partitionSpace && (!BlockSystemWorldAccess.canAccess(world) || override);
     }
 
     public static Chunk getChunk(World world, int x, int z) {
@@ -111,7 +118,7 @@ public class BlockSystemHooks {
     public static World setWorld(TileEntity entity, World world) {
         BlockPos pos = entity.getPos();
         if (pos != BlockPos.ORIGIN) {
-            return BlockSystemHooks.getBlockSystemWorld(world, pos);
+            return BlockSystemHooks.getBlockSystemWorld(world, new ChunkPos(pos));
         }
         return world;
     }
@@ -119,12 +126,12 @@ public class BlockSystemHooks {
     public static BlockPos setPos(TileEntity entity, BlockPos pos) {
         World world = entity.getWorld();
         if (world != null) {
-            entity.setWorld(BlockSystemHooks.getBlockSystemWorld(world, pos));
+            entity.setWorld(BlockSystemHooks.getBlockSystemWorld(world, new ChunkPos(pos)));
         }
         return pos;
     }
 
-    private static World getBlockSystemWorld(World world, BlockPos pos) {
+    private static World getBlockSystemWorld(World world, ChunkPos pos) {
         BlockSystemSavedData data = BlockSystemSavedData.get(world, false);
         BlockSystem blockSystem = data.getBlockSystem(pos);
         if (blockSystem != null) {

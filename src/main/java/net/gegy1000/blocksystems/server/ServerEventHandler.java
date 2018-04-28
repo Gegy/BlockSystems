@@ -9,7 +9,6 @@ import net.gegy1000.blocksystems.server.core.BlockSystemHooks;
 import net.gegy1000.blocksystems.server.util.math.QuatRotation;
 import net.gegy1000.blocksystems.server.world.BlockSystemWorldAccess;
 import net.gegy1000.blocksystems.server.world.data.BlockSystemSavedData;
-import net.minecraft.client.Minecraft;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
@@ -78,8 +77,11 @@ public class ServerEventHandler {
                     Vector3f vec = new Vector3f(deltaX, deltaY, deltaZ);
                     QuatRotation rotation = blockSystem.prevRotation.difference(blockSystem.rotation);
                     rotation.getMatrix().transform(vec);
-                    entity.prevRotationPitch=entity.rotationPitch;
-                    entity.prevRotationYaw=entity.rotationYaw;
+                    float transformYaw = (float) (-Math.atan2(vec.x, vec.z) * 180.0F / Math.PI) - entity.rotationYaw;
+                    float transformPitch = (float) (-Math.asin(vec.y) * (180.0F / Math.PI)) - entity.rotationPitch;
+                    entity.rotationYaw += transformYaw;
+                    entity.renderYawOffset += transformYaw;
+                    entity.rotationPitch += transformPitch;
                 }
             }
         }
@@ -104,8 +106,6 @@ public class ServerEventHandler {
             }
         }
     }
-
-
 
     @SubscribeEvent
     public static void onEntityJoinWorld(EntityJoinWorldEvent event) {

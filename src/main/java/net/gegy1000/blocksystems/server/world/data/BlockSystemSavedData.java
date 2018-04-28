@@ -5,7 +5,7 @@ import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.Tuple;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.World;
 import net.minecraft.world.storage.MapStorage;
 import net.minecraft.world.storage.WorldSavedData;
@@ -20,14 +20,14 @@ public class BlockSystemSavedData extends WorldSavedData {
     private static final ThreadLocal<World> READING_WORLD = new ThreadLocal<>();
     private static final ThreadLocal<Boolean> LOAD = ThreadLocal.withInitial(() -> true);
     private static final ThreadLocal<BlockSystem> CURRENTLY_LOADING = new ThreadLocal<>();
-    private static final Map<World, List<Tuple<BlockPos, BlockSystem>>> QUEUED_PARTITIONS = new HashMap<>();
+    private static final Map<World, List<Tuple<ChunkPos, BlockSystem>>> QUEUED_PARTITIONS = new HashMap<>();
 
     public static final String KEY = "block_systems";
 
     private World world;
 
     private Map<Integer, BlockSystem> blockSystems = new HashMap<>();
-    private Map<BlockPos, BlockSystem> partitions = new HashMap<>();
+    private Map<ChunkPos, BlockSystem> partitions = new HashMap<>();
 
     public BlockSystemSavedData() {
         this(KEY);
@@ -60,9 +60,9 @@ public class BlockSystemSavedData extends WorldSavedData {
         if (LOAD.get()) {
             this.partitions.clear();
             this.blockSystems.clear();
-            BlockSystem.nextID = compound.getInteger("NextID");
+            BlockSystem.nextID = compound.getInteger("next_id");
             try {
-                NBTTagList blockSystemsList = compound.getTagList("BlockSystems", Constants.NBT.TAG_COMPOUND);
+                NBTTagList blockSystemsList = compound.getTagList("block_systems", Constants.NBT.TAG_COMPOUND);
                 for (int i = 0; i < blockSystemsList.tagCount(); i++) {
                     NBTTagCompound tag = blockSystemsList.getCompoundTagAt(i);
                     BlockSystem system = BlockSystems.PROXY.createBlockSystem(this.world, BlockSystem.nextID++);
@@ -73,9 +73,9 @@ public class BlockSystemSavedData extends WorldSavedData {
                     CURRENTLY_LOADING.set(null);
                 }
             } finally {
-                List<Tuple<BlockPos, BlockSystem>> queuedPartitions = QUEUED_PARTITIONS.remove(this.world);
+                List<Tuple<ChunkPos, BlockSystem>> queuedPartitions = QUEUED_PARTITIONS.remove(this.world);
                 if (queuedPartitions != null) {
-                    for (Tuple<BlockPos, BlockSystem> partition : queuedPartitions) {
+                    for (Tuple<ChunkPos, BlockSystem> partition : queuedPartitions) {
                         this.addPartition(partition.getFirst(), partition.getSecond());
                     }
                 }
@@ -85,39 +85,38 @@ public class BlockSystemSavedData extends WorldSavedData {
 
     @Override
     public NBTTagCompound writeToNBT(NBTTagCompound compound) {
-        compound.setInteger("NextID", BlockSystem.nextID);
+        compound.setInteger("next_id", BlockSystem.nextID);
         NBTTagList blockSystemsList = new NBTTagList();
         for (Map.Entry<Integer, BlockSystem> entry : this.blockSystems.entrySet()) {
             NBTTagCompound tag = entry.getValue().serialize(new NBTTagCompound());
             blockSystemsList.appendTag(tag);
         }
-        compound.setTag("BlockSystems", blockSystemsList);
+        compound.setTag("block_systems", blockSystemsList);
         return compound;
     }
 
-    public void addPartition(BlockPos pos, BlockSystem owner) {
+    public void addPartition(ChunkPos pos, BlockSystem owner) {
         if (!this.partitions.containsKey(pos)) {
             this.partitions.put(pos, owner);
             this.markDirty();
         }
     }
 
-    public void deletePartition(BlockPos pos) {
+    public void deletePartition(ChunkPos pos) {
         BlockSystem remove = this.partitions.remove(pos);
         if (remove != null) {
             this.markDirty();
         }
     }
 
-    public BlockSystem getBlockSystem(BlockPos partition) {
-        if (CURRENTLY_LOADING.get() == null) {
-            BlockPos partitionBasePos = new BlockPos(partition.getX() & ~0xF, 0, partition.getZ() & ~0xF);
-            return this.partitions.get(partitionBasePos);
+    public BlockSystem getBlockSystem(ChunkPos partition) {
+        if (CURRENTLY_LOADING.get() != null) {
+            return CURRENTLY_LOADING.get();
         }
-        return CURRENTLY_LOADING.get();
+        return this.partitions.get(partition);
     }
 
-    public boolean hasPartition(BlockPos pos) {
+    public boolean hasPartition(ChunkPos pos) {
         return this.partitions.containsKey(pos);
     }
 
@@ -135,8 +134,8 @@ public class BlockSystemSavedData extends WorldSavedData {
         this.markDirty();
     }
 
-    public static void enqueuePartition(World world, BlockSystem blockSystem, BlockPos pos) {
-        List<Tuple<BlockPos, BlockSystem>> partitions = QUEUED_PARTITIONS.computeIfAbsent(world, key -> new ArrayList<>());
+    public static void enqueuePartition(World world, BlockSystem blockSystem, ChunkPos pos) {
+        List<Tuple<ChunkPos, BlockSystem>> partitions = QUEUED_PARTITIONS.computeIfAbsent(world, key -> new ArrayList<>());
         partitions.add(new Tuple<>(pos, blockSystem));
     }
 }
