@@ -32,7 +32,7 @@ public class BlockSystemCommand extends CommandBase {
             BlockSystem blockSystem = BlockSystems.PROXY.createBlockSystem(world, BlockSystem.nextID++);
 
             QuatRotation rotation = new QuatRotation();
-            rotation.rotate(180.0 - player.rotationYaw, 0.0, 1.0, 0.0);
+            rotation.rotate(180.0 - player.rotationYaw, 0, 0.0, 1.0);
             blockSystem.setPositionAndRotation(player.posX, player.posY, player.posZ, rotation);
             handler.addBlockSystem(blockSystem);
 

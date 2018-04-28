@@ -78,6 +78,13 @@ public class QuatRotation {
         return slerp;
     }
 
+    public QuatRotation difference(QuatRotation other) {
+        QuatRotation difference = new QuatRotation();
+        difference.rotation.mulInverse(this.rotation, other.rotation);
+        difference.matrix.set(difference.rotation);
+        return difference;
+    }
+
     public QuatRotation copy() {
         QuatRotation quatRotation = new QuatRotation();
         quatRotation.rotation.set(this.rotation);

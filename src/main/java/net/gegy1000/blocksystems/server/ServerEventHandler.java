@@ -6,17 +6,22 @@ import net.gegy1000.blocksystems.server.blocksystem.BlockSystemServer;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystemTrackingHandler;
 import net.gegy1000.blocksystems.server.blocksystem.ServerBlockSystemHandler;
 import net.gegy1000.blocksystems.server.core.BlockSystemHooks;
+import net.gegy1000.blocksystems.server.util.math.QuatRotation;
 import net.gegy1000.blocksystems.server.world.BlockSystemWorldAccess;
 import net.gegy1000.blocksystems.server.world.data.BlockSystemSavedData;
+import net.minecraft.client.Minecraft;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.EnumHand;
 import net.minecraft.util.math.AxisAlignedBB;
+import net.minecraft.util.math.MathHelper;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
+import net.minecraftforge.event.entity.living.LivingEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.world.GetCollisionBoxesEvent;
 import net.minecraftforge.event.world.WorldEvent;
@@ -26,6 +31,7 @@ import net.minecraftforge.fml.common.gameevent.PlayerEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent.Phase;
 
+import javax.vecmath.Vector3f;
 import java.util.Collection;
 
 @Mod.EventBusSubscriber(modid = BlockSystems.MODID)
@@ -48,11 +54,36 @@ public class ServerEventHandler {
     }
 
     // TODO: Add back with OBB collision
-/*    @SubscribeEvent
+    @SubscribeEvent
     public static void onEntityTick(LivingEvent.LivingUpdateEvent event) {
         EntityLivingBase entity = event.getEntityLiving();
-        AxisAlignedBB entityBounds = entity.getEntityBoundingBox();
-    }*/
+        AxisAlignedBB entityBounds = entity.getEntityBoundingBox().grow(0.02);
+
+        ServerBlockSystemHandler handler = BlockSystems.PROXY.getBlockSystemHandler(entity.world);
+        for (BlockSystem blockSystem : handler.getBlockSystems()) {
+            AxisAlignedBB encompassing = blockSystem.getRotatedBounds().getAabb();
+            if (entityBounds.intersects(encompassing)) {
+                boolean collides = false;
+                for (AxisAlignedBB bb : blockSystem.getCollisionBoxes(entity, entityBounds)) {
+                    if (entityBounds.intersects(bb)) {
+                        collides = true;
+                        break;
+                    }
+                }
+                if (collides) {
+                    float pitchHorizontalFactor = -MathHelper.cos((float) -Math.toRadians(entity.rotationPitch));
+                    float deltaX = MathHelper.sin((float) -Math.toRadians(entity.rotationYaw - 180.0F)) * pitchHorizontalFactor;
+                    float deltaY = MathHelper.sin((float) -Math.toRadians(entity.rotationPitch));
+                    float deltaZ = MathHelper.cos((float) -Math.toRadians(entity.rotationYaw - 180.0F)) * pitchHorizontalFactor;
+                    Vector3f vec = new Vector3f(deltaX, deltaY, deltaZ);
+                    QuatRotation rotation = blockSystem.prevRotation.difference(blockSystem.rotation);
+                    rotation.getMatrix().transform(vec);
+                    entity.prevRotationPitch=entity.rotationPitch;
+                    entity.prevRotationYaw=entity.rotationYaw;
+                }
+            }
+        }
+    }
 
     @SubscribeEvent
     public static void onCollectCollisionBoxes(GetCollisionBoxesEvent event) {
@@ -73,6 +104,8 @@ public class ServerEventHandler {
             }
         }
     }
+
+
 
     @SubscribeEvent
     public static void onEntityJoinWorld(EntityJoinWorldEvent event) {

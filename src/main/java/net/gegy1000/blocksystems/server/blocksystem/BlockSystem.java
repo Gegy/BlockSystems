@@ -23,12 +23,7 @@ import net.minecraft.util.EnumFacing;
 import net.minecraft.util.EnumParticleTypes;
 import net.minecraft.util.SoundCategory;
 import net.minecraft.util.SoundEvent;
-import net.minecraft.util.math.AxisAlignedBB;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.RayTraceResult;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.math.*;
 import net.minecraft.world.IWorldEventListener;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldType;
@@ -43,11 +38,7 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 import javax.annotation.Nullable;
 import javax.vecmath.Point3d;
 import javax.vecmath.Vector3d;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 public abstract class BlockSystem extends World {
     public static int nextID = 0;
@@ -218,7 +209,7 @@ public abstract class BlockSystem extends World {
 
     @Override
     protected boolean isChunkLoaded(int x, int z, boolean allowEmpty) {
-        return false;
+        return true;
     }
 
     @Override
@@ -366,7 +357,25 @@ public abstract class BlockSystem extends World {
 
         super.tick();
 
-        this.rotation.rotate(0.8, 0.0, 1.0, 0.0);
+        boolean rotate=true;
+
+        List<AxisAlignedBB> bbs=getCollisionBoxes(null,maximumBounds.offset(posX,posY,posZ  ));
+        for(AxisAlignedBB bb : bbs) {
+            for (BlockPos.MutableBlockPos pos : BlockPos.getAllInBoxMutable((int) Math.floor(bb.minX), (int) Math.floor(bb.minY), (int) Math.floor(bb.minZ), (int) Math.ceil(bb.maxX), (int) Math.ceil(bb.maxY), (int) Math.ceil(bb.maxZ))) {
+                IBlockState state = mainWorld.getBlockState(pos);
+                AxisAlignedBB aabb = state.getCollisionBoundingBox(mainWorld, pos);
+                if (aabb == null)
+                    continue;
+                aabb = aabb.shrink(0.02).offset(pos);
+                if (bb.intersects(aabb)) {
+                    rotate = false;
+                    break;
+                }
+            }
+        }
+
+        if(rotate)
+        this.rotation.rotate(0.5, 0.0, 1.0, 0.0);
 
         if (this.boundEntity != null) {
             this.setPositionAndRotation(this.boundEntity.posX, this.boundEntity.posY, this.boundEntity.posZ, this.rotation);

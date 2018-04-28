@@ -3,6 +3,8 @@ package net.gegy1000.blocksystems.server.message.blocksystem;
 import io.netty.buffer.ByteBuf;
 import net.gegy1000.blocksystems.BlockSystems;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
+import net.gegy1000.blocksystems.server.entity.FakePlayerWrapper;
+import net.gegy1000.blocksystems.server.message.BaseMessage;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
@@ -16,7 +18,6 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.event.ForgeEventFactory;
 import net.minecraftforge.fml.common.network.simpleimpl.MessageContext;
-import net.gegy1000.blocksystems.server.message.BaseMessage;
 
 public class InteractBlockMessage extends BaseMessage<InteractBlockMessage> {
     private int blockSystem;
@@ -71,6 +72,7 @@ public class InteractBlockMessage extends BaseMessage<InteractBlockMessage> {
     public void onReceiveServer(MinecraftServer server, WorldServer world, EntityPlayerMP player, MessageContext context) {
         BlockSystem blockSystem = BlockSystems.PROXY.getBlockSystemHandler(world).getBlockSystem(this.blockSystem);
         if (blockSystem != null) {
+            player = new FakePlayerWrapper(player, blockSystem, this.position);
             IBlockState state = blockSystem.getBlockState(this.position);
             ItemStack heldItem = player.getHeldItem(this.hand);
             if (!state.getBlock().onBlockActivated(blockSystem, this.position, state, player, this.hand, this.side, this.hitX, this.hitY, this.hitZ)) {
