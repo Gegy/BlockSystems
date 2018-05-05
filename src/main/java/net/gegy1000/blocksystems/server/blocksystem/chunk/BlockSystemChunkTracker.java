@@ -2,12 +2,10 @@ package net.gegy1000.blocksystems.server.blocksystem.chunk;
 
 import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.ComparisonChain;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import net.gegy1000.blocksystems.BlockSystems;
-import net.gegy1000.blocksystems.server.blocksystem.BlockSystemPlayerHandler;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystemServer;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -19,7 +17,10 @@ import net.minecraft.world.chunk.Chunk;
 
 import javax.annotation.Nullable;
 import javax.vecmath.Point3d;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -27,14 +28,15 @@ import java.util.function.Predicate;
 public class BlockSystemChunkTracker {
     private static final Predicate<EntityPlayerMP> NOT_SPECTATOR = player -> player != null && !player.isSpectator();
     private static final Predicate<EntityPlayerMP> CAN_GENERATE_CHUNKS = player -> player != null && (!player.isSpectator() || player.getServerWorld().getGameRules().getBoolean("spectatorsGenerateChunks"));
+    public static final double MOVE_RECALCULATE_RANGE = 8.0;
 
     private final BlockSystemServer blockSystem;
-    private final List<EntityPlayerMP> players = Lists.newArrayList();
+    private final Int2ObjectMap<PlayerHandler> players = new Int2ObjectOpenHashMap<>();
     private final Long2ObjectMap<BlockSystemPlayerTracker> playerTrackers = new Long2ObjectOpenHashMap<>(4096);
-    private final Set<BlockSystemPlayerTracker> updateQueue = Sets.newHashSet();
-    private final List<BlockSystemPlayerTracker> sendQueue = Lists.newLinkedList();
-    private final List<BlockSystemPlayerTracker> requestQueue = Lists.newLinkedList();
-    private final List<BlockSystemPlayerTracker> playerTrackerList = Lists.newArrayList();
+    private final Set<BlockSystemPlayerTracker> updateQueue = new HashSet<>();
+    private final List<BlockSystemPlayerTracker> sendQueue = new LinkedList<>();
+    private final List<BlockSystemPlayerTracker> requestQueue = new LinkedList<>();
+    private final List<BlockSystemPlayerTracker> playerTrackerList = new ArrayList<>();
 
     private int playerViewRadius;
     private long previousTotalWorldTime;
@@ -139,10 +141,54 @@ public class BlockSystemChunkTracker {
             }
         }
 
-        if (this.players.isEmpty()) {
+        if (!this.players.isEmpty()) {
+            if (worldTime % 10 == 0) {
+                for (PlayerHandler handler : this.players.values()) {
+                    this.updatePlayer(handler, handler.player);
+                }
+            }
+        } else {
             WorldProvider provider = this.blockSystem.provider;
             if (!provider.canRespawnHere()) {
                 this.blockSystem.getChunkProvider().queueUnloadAll();
+            }
+        }
+    }
+
+    private void updatePlayer(PlayerHandler handler, EntityPlayerMP player) {
+        int playerChunkX = MathHelper.floor(player.posX) >> 4;
+        int playerChunkZ = MathHelper.floor(player.posZ) >> 4;
+
+        double movedX = handler.managedX - player.posX;
+        double movedZ = handler.managedZ - player.posZ;
+        double moved = movedX * movedX + movedZ * movedZ;
+
+        if (moved >= MOVE_RECALCULATE_RANGE * MOVE_RECALCULATE_RANGE) {
+            int managedChunkX = MathHelper.floor(handler.managedX) >> 4;
+            int managedChunkZ = MathHelper.floor(handler.managedZ) >> 4;
+            int movedChunkX = playerChunkX - managedChunkX;
+            int movedChunkZ = playerChunkZ - managedChunkZ;
+
+            int range = this.playerViewRadius;
+            if (movedChunkX != 0 || movedChunkZ != 0) {
+                for (int chunkZ = playerChunkZ - range; chunkZ <= playerChunkZ + range; ++chunkZ) {
+                    for (int chunkX = playerChunkX - range; chunkX <= playerChunkX + range; ++chunkX) {
+                        if (!this.inRange(chunkX, chunkZ, managedChunkX, managedChunkZ, range)) {
+                            this.getOrCreateTracker(chunkX, chunkZ).addPlayer(player);
+                        }
+
+                        if (!this.inRange(chunkX - movedChunkX, chunkZ - movedChunkZ, playerChunkX, playerChunkZ, range)) {
+                            BlockSystemPlayerTracker tracker = this.getTracker(chunkX - movedChunkX, chunkZ - movedChunkZ);
+                            if (tracker != null) {
+                                tracker.removePlayer(player);
+                            }
+                        }
+                    }
+                }
+
+                handler.managedX = player.posX;
+                handler.managedZ = player.posZ;
+                this.markSortPending();
             }
         }
     }
@@ -154,6 +200,16 @@ public class BlockSystemChunkTracker {
     @Nullable
     public BlockSystemPlayerTracker getTracker(int x, int z) {
         return this.playerTrackers.get(getChunkIndex(x, z));
+    }
+
+    private boolean inRange(int originX, int originZ, int targetX, int targetZ, int range) {
+        int deltaX = originX - targetX;
+        int deltaZ = originZ - targetZ;
+        if (deltaX >= -range && deltaX <= range) {
+            return deltaZ >= -range && deltaZ <= range;
+        } else {
+            return false;
+        }
     }
 
     private BlockSystemPlayerTracker getOrCreateTracker(int chunkX, int chunkZ) {
@@ -183,35 +239,36 @@ public class BlockSystemChunkTracker {
     }
 
     public void addPlayer(EntityPlayerMP player) {
-        BlockSystemPlayerHandler handler = BlockSystems.PROXY.getBlockSystemHandler(player.world).get(this.blockSystem, player);
         Point3d playerPosition = this.getUntransformedPosition(player);
+        PlayerHandler handler = new PlayerHandler(player, playerPosition.getX(), playerPosition.getZ());
+        this.players.put(player.getEntityId(), handler);
+
         int playerChunkX = (int) playerPosition.getX() >> 4;
         int playerChunkZ = (int) playerPosition.getZ() >> 4;
-        handler.setManagedPosX(playerPosition.getX());
-        handler.setManagedPosZ(playerPosition.getZ());
         for (int chunkX = playerChunkX - this.playerViewRadius; chunkX <= playerChunkX + this.playerViewRadius; ++chunkX) {
             for (int chunkZ = playerChunkZ - this.playerViewRadius; chunkZ <= playerChunkZ + this.playerViewRadius; ++chunkZ) {
                 this.getOrCreateTracker(chunkX, chunkZ).addPlayer(player);
             }
         }
-        this.players.add(player);
+
         this.markSortPending();
     }
 
     public void removePlayer(EntityPlayerMP player) {
-        BlockSystemPlayerHandler handler = BlockSystems.PROXY.getBlockSystemHandler(player.world).get(this.blockSystem, player);
-        int managedChunkX = (int) handler.getManagedPosX() >> 4;
-        int managedChunkZ = (int) handler.getManagedPosZ() >> 4;
-        for (int chunkX = managedChunkX - this.playerViewRadius; chunkX <= managedChunkX + this.playerViewRadius; ++chunkX) {
-            for (int chunkZ = managedChunkZ - this.playerViewRadius; chunkZ <= managedChunkZ + this.playerViewRadius; ++chunkZ) {
-                BlockSystemPlayerTracker tracker = this.getTracker(chunkX, chunkZ);
-                if (tracker != null) {
-                    tracker.removePlayer(player);
+        PlayerHandler handler = this.players.remove(player.getEntityId());
+        if (handler != null) {
+            int managedChunkX = MathHelper.floor(handler.managedX) >> 4;
+            int managedChunkZ = MathHelper.floor(handler.managedZ) >> 4;
+            for (int chunkX = managedChunkX - this.playerViewRadius; chunkX <= managedChunkX + this.playerViewRadius; ++chunkX) {
+                for (int chunkZ = managedChunkZ - this.playerViewRadius; chunkZ <= managedChunkZ + this.playerViewRadius; ++chunkZ) {
+                    BlockSystemPlayerTracker tracker = this.getTracker(chunkX, chunkZ);
+                    if (tracker != null) {
+                        tracker.removePlayer(player);
+                    }
                 }
             }
+            this.markSortPending();
         }
-        this.players.remove(player);
-        this.markSortPending();
     }
 
     private boolean intersects(int x1, int z1, int x2, int z2, int radius) {
@@ -224,10 +281,11 @@ public class BlockSystemChunkTracker {
         radius = MathHelper.clamp(radius, 3, 32);
         if (radius != this.playerViewRadius) {
             int deltaRadius = radius - this.playerViewRadius;
-            for (EntityPlayerMP player : Lists.newArrayList(this.players)) {
+            for (PlayerHandler handler : this.players.values()) {
+                EntityPlayerMP player = handler.player;
                 Point3d playerPosition = this.getUntransformedPosition(player);
-                int playerChunkX = (int) playerPosition.getX() >> 4;
-                int playerChunkZ = (int) playerPosition.getZ() >> 4;
+                int playerChunkX = MathHelper.floor(playerPosition.getX()) >> 4;
+                int playerChunkZ = MathHelper.floor(playerPosition.getZ()) >> 4;
                 if (deltaRadius > 0) {
                     for (int chunkX = playerChunkX - radius; chunkX <= playerChunkX + radius; ++chunkX) {
                         for (int chunkZ = playerChunkZ - radius; chunkZ <= playerChunkZ + radius; ++chunkZ) {
@@ -282,5 +340,17 @@ public class BlockSystemChunkTracker {
 
     public Point3d getUntransformedPosition(EntityPlayer player) {
         return this.blockSystem.getUntransformedPosition(new Point3d(player.posX, player.posY, player.posZ));
+    }
+
+    private static class PlayerHandler {
+        private final EntityPlayerMP player;
+        private double managedX;
+        private double managedZ;
+
+        private PlayerHandler(EntityPlayerMP player, double managedX, double managedZ) {
+            this.player = player;
+            this.managedX = managedX;
+            this.managedZ = managedZ;
+        }
     }
 }

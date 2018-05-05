@@ -3,25 +3,39 @@ package net.gegy1000.blocksystems.client.blocksystem.chunk;
 import net.gegy1000.blocksystems.client.render.blocksystem.BlockSystemRenderHandler;
 import net.gegy1000.blocksystems.client.render.blocksystem.BlockSystemRenderer;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
-import net.gegy1000.blocksystems.server.blocksystem.chunk.BlockSystemChunk;
+import net.minecraft.block.Block;
+import net.minecraft.block.state.IBlockState;
 import net.minecraft.init.Blocks;
 import net.minecraft.network.PacketBuffer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
 
-public class ClientBlockSystemChunk extends BlockSystemChunk {
+import javax.annotation.Nullable;
+
+public class ClientBlockSystemChunk extends Chunk {
+    private final BlockSystem blockSystem;
+    private final World mainWorld;
+
+    private int blockCount;
+
     public ClientBlockSystemChunk(BlockSystem blockSystem, int x, int z) {
         super(blockSystem, x, z);
+        this.blockSystem = blockSystem;
+        this.mainWorld = blockSystem.getMainWorld();
     }
 
     @Override
-    public void remove() {
-        super.remove();
-        BlockSystemRenderer renderer = BlockSystemRenderHandler.get(this.blockSystem);
-        if (renderer != null) {
-            renderer.deleteChunk(this.x, this.z);
+    public IBlockState setBlockState(BlockPos pos, IBlockState state) {
+        IBlockState prev = this.getBlockState(pos);
+        if (prev.getBlock() != Blocks.AIR) {
+            this.blockCount--;
         }
+        if (state.getBlock() != Blocks.AIR) {
+            this.blockCount++;
+        }
+        return super.setBlockState(pos, state);
     }
 
     @Override
@@ -31,6 +45,13 @@ public class ClientBlockSystemChunk extends BlockSystemChunk {
         if (renderer != null) {
             renderer.deleteChunk(this.x, this.z);
         }
+    }
+
+    @Nullable
+    private TileEntity createNewTileEntity(BlockPos pos) {
+        IBlockState state = this.getBlockState(pos);
+        Block block = state.getBlock();
+        return !block.hasTileEntity(state) ? null : block.createTileEntity(this.mainWorld, state);
     }
 
     @Override
@@ -64,5 +85,15 @@ public class ClientBlockSystemChunk extends BlockSystemChunk {
                 }
             }
         }
+    }
+
+    @Override
+    public boolean isPopulated() {
+        return true;
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return this.blockCount <= 0;
     }
 }

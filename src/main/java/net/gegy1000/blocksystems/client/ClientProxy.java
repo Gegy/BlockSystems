@@ -5,7 +5,7 @@ import net.gegy1000.blocksystems.client.blocksystem.ClientBlockSystemHandler;
 import net.gegy1000.blocksystems.client.render.RenderRegistry;
 import net.gegy1000.blocksystems.server.ServerProxy;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
-import net.gegy1000.blocksystems.server.blocksystem.ServerBlockSystemHandler;
+import net.gegy1000.blocksystems.server.blocksystem.BlockSystemHandler;
 import net.gegy1000.blocksystems.server.message.BaseMessage;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
@@ -22,7 +22,10 @@ import net.minecraftforge.fml.common.network.simpleimpl.MessageContext;
 
 public class ClientProxy extends ServerProxy {
     public static final Minecraft MINECRAFT = Minecraft.getMinecraft();
+
     private static ClientBlockSystemHandler blockSystemHandler;
+    private static BlockSystem mouseOverSystem;
+    private static RayTraceResult mouseOver;
 
     @Override
     public void onPreInit() {
@@ -33,13 +36,11 @@ public class ClientProxy extends ServerProxy {
     @Override
     public void onInit() {
         super.onInit();
-        RenderRegistry.onInit();
     }
 
     @Override
     public void onPostInit() {
         super.onPostInit();
-        RenderRegistry.onPostInit();
     }
 
     @Override
@@ -78,14 +79,26 @@ public class ClientProxy extends ServerProxy {
     }
 
     @Override
-    public ServerBlockSystemHandler getBlockSystemHandler(World world) {
+    public BlockSystemHandler getBlockSystemHandler(World world) {
         if (world.isRemote) {
             if (blockSystemHandler == null) {
-                blockSystemHandler = new ClientBlockSystemHandler(world);
+                blockSystemHandler = new ClientBlockSystemHandler(MINECRAFT.player);
             }
             return blockSystemHandler;
         } else {
             return super.getBlockSystemHandler(world);
+        }
+    }
+
+    @Override
+    public void unload(World world) {
+        if (world.isRemote) {
+            if (blockSystemHandler != null) {
+                blockSystemHandler.unload();
+                blockSystemHandler = null;
+            }
+        } else {
+            super.unload(world);
         }
     }
 
@@ -115,5 +128,23 @@ public class ClientProxy extends ServerProxy {
     @Override
     public boolean isPaused(World world) {
         return MINECRAFT.isGamePaused();
+    }
+
+    public static void resetMouseOver() {
+        ClientProxy.mouseOverSystem = null;
+        ClientProxy.mouseOver = null;
+    }
+
+    public static void updateMouseOver(BlockSystem mouseOverSystem, RayTraceResult mouseOver) {
+        ClientProxy.mouseOverSystem = mouseOverSystem;
+        ClientProxy.mouseOver = mouseOver;
+    }
+
+    public static BlockSystem getMouseOverSystem() {
+        return mouseOverSystem;
+    }
+
+    public static RayTraceResult getMouseOver() {
+        return mouseOver;
     }
 }

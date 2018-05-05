@@ -38,7 +38,7 @@ public class BlockSystemPlayerTracker {
     private final List<EntityPlayerMP> players = Lists.newArrayList();
     private final ChunkPos chunkPosition;
     private short[] changedBlocks = new short[64];
-    private BlockSystemChunk providingChunk;
+    private ServerBlockSystemChunk providingChunk;
     private int changeCount;
     private int changedSectionMask;
     private long lastUpdateInhabitedTime;
@@ -51,7 +51,7 @@ public class BlockSystemPlayerTracker {
         this.chunkPosition = new ChunkPos(chunkX, chunkZ);
         this.blockSystem = trackManager.getBlockSystem();
         this.loadedRunnable = () -> {
-            BlockSystemPlayerTracker.this.providingChunk = (BlockSystemChunk) BlockSystemPlayerTracker.this.blockSystem.getChunkProvider().loadChunk(BlockSystemPlayerTracker.this.chunkPosition.x, BlockSystemPlayerTracker.this.chunkPosition.z);
+            BlockSystemPlayerTracker.this.providingChunk = (ServerBlockSystemChunk) BlockSystemPlayerTracker.this.blockSystem.getChunkProvider().loadChunk(BlockSystemPlayerTracker.this.chunkPosition.x, BlockSystemPlayerTracker.this.chunkPosition.z);
             BlockSystemPlayerTracker.this.loading = false;
         };
         this.blockSystem.getChunkProvider().loadChunk(chunkX, chunkZ, this.loadedRunnable);
@@ -94,7 +94,7 @@ public class BlockSystemPlayerTracker {
             this.players.remove(player);
             World world = player.world;
             player.world = this.blockSystem;
-            MinecraftForge.EVENT_BUS.post(new UnWatch(this.chunkPosition, player));
+            MinecraftForge.EVENT_BUS.post(new UnWatch(this.providingChunk, player));
             player.world = world;
             if (this.players.isEmpty()) {
                 this.trackManager.removeTracker(this);
@@ -111,9 +111,9 @@ public class BlockSystemPlayerTracker {
                 int x = this.chunkPosition.x;
                 int z = this.chunkPosition.z;
                 if (canGenerate) {
-                    this.providingChunk = (BlockSystemChunk) chunkProvider.provideChunk(x, z);
+                    this.providingChunk = (ServerBlockSystemChunk) chunkProvider.provideChunk(x, z);
                 } else {
-                    this.providingChunk = (BlockSystemChunk) chunkProvider.loadChunk(x, z);
+                    this.providingChunk = (ServerBlockSystemChunk) chunkProvider.loadChunk(x, z);
                 }
             }
         }
@@ -135,7 +135,7 @@ public class BlockSystemPlayerTracker {
 //                this.blockSystem.getEntityTracker().sendLeashedEntitiesInChunk(player, this.providingChunk); TODO
                 World world = player.world;
                 player.world = this.blockSystem;
-                MinecraftForge.EVENT_BUS.post(new Watch(this.chunkPosition, player));
+                MinecraftForge.EVENT_BUS.post(new Watch(this.providingChunk, player));
                 player.world = world;
             }
             return true;
@@ -193,7 +193,7 @@ public class BlockSystemPlayerTracker {
                     int changedZ = (this.changedBlocks[0] >> 8 & 15) + this.chunkPosition.z * 16;
                     BlockPos changedPos = new BlockPos(changedX, changedY, changedZ);
                     IBlockState state = this.blockSystem.getBlockState(changedPos);
-                    this.sendMessage(new SetBlockMessage(this.blockSystem, changedPos, state));
+                    this.sendMessage(new SetBlockMessage(this.blockSystem, changedPos));
                     if (state.getBlock().hasTileEntity(state)) {
                         this.updateBlockEntity(this.blockSystem.getTileEntity(changedPos));
                     }

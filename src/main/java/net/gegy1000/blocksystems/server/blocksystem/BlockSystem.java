@@ -3,7 +3,6 @@ package net.gegy1000.blocksystems.server.blocksystem;
 import com.google.common.base.Function;
 import com.google.common.base.Predicate;
 import net.gegy1000.blocksystems.BlockSystems;
-import net.gegy1000.blocksystems.server.blocksystem.chunk.BlockSystemChunk;
 import net.gegy1000.blocksystems.server.entity.BlockSystemControlEntity;
 import net.gegy1000.blocksystems.server.util.collision.EncompassedAABB;
 import net.gegy1000.blocksystems.server.util.math.Matrix;
@@ -15,22 +14,23 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Biomes;
 import net.minecraft.init.Blocks;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.nbt.NBTTagList;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.EnumParticleTypes;
 import net.minecraft.util.SoundCategory;
 import net.minecraft.util.SoundEvent;
-import net.minecraft.util.math.*;
+import net.minecraft.util.math.AxisAlignedBB;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.RayTraceResult;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.IWorldEventListener;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldType;
 import net.minecraft.world.biome.Biome;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.common.util.Constants;
 import net.minecraftforge.event.world.GetCollisionBoxesEvent;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
@@ -38,7 +38,9 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 import javax.annotation.Nullable;
 import javax.vecmath.Point3d;
 import javax.vecmath.Vector3d;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 public abstract class BlockSystem extends World {
     public static int nextID = 0;
@@ -60,20 +62,19 @@ public abstract class BlockSystem extends World {
     protected Matrix transformMatrix = new Matrix(3);
     protected Matrix untransformMatrix = new Matrix(3);
 
+    protected Matrix prevTransformMatrix = new Matrix(1);
+    protected Matrix prevUntransformMatrix = new Matrix(1);
+
     protected boolean deserializing;
 
     protected BlockSystemControlEntity boundEntity;
 
-    protected Map<EntityPlayer, BlockSystemPlayerHandler> playerHandlers = new HashMap<>();
     protected boolean removed;
 
     protected int id;
 
     protected AxisAlignedBB maximumBounds = new AxisAlignedBB(-64, 0, -64, 64, 128, 64);
     protected EncompassedAABB rotatedBounds = new EncompassedAABB(this.maximumBounds);
-
-    protected final Map<ChunkPos, BlockSystemChunk> savedChunks = new HashMap<>();
-    protected final Map<ChunkPos, BlockSystemChunk> partitionChunks = new HashMap<>();
 
     public BlockSystem(World mainWorld, int id, MinecraftServer server) {
         super(new BlockSystemSaveHandler(), mainWorld.getWorldInfo(), mainWorld.provider, mainWorld.profiler, mainWorld.isRemote);
@@ -86,15 +87,21 @@ public abstract class BlockSystem extends World {
 
     public abstract void initializeBlockSystem(MinecraftServer server);
 
-    public void setID(int id) {
+    public void setId(int id) {
         this.id = id;
     }
 
-    public int getID() {
+    public int getId() {
         return this.id;
     }
 
-    private void recalculateMatrices() {
+    protected void recalculateMatrices() {
+        this.prevTransformMatrix.setIdentity();
+        this.prevTransformMatrix.multiply(this.transformMatrix);
+
+        this.prevUntransformMatrix.setIdentity();
+        this.prevUntransformMatrix.multiply(this.untransformMatrix);
+
         this.transformMatrix.setIdentity();
         this.transformMatrix.translate(this.posX, this.posY, this.posZ);
         // TODO: No idea why but this only works with the inverse?
@@ -106,45 +113,6 @@ public abstract class BlockSystem extends World {
         this.untransformMatrix.invert();
 
         this.rotatedBounds.calculate(this.transformMatrix);
-    }
-
-    public void deserialize(NBTTagCompound compound) {
-        this.deserializing = true;
-        this.posX = compound.getDouble("pos_x");
-        this.posY = compound.getDouble("pos_y");
-        this.posZ = compound.getDouble("pos_z");
-        this.rotation.deserialize(compound.getCompoundTag("rot"));
-        NBTTagList chunksList = compound.getTagList("chunks", Constants.NBT.TAG_COMPOUND);
-        for (int i = 0; i < chunksList.tagCount(); i++) {
-            NBTTagCompound chunkTag = chunksList.getCompoundTagAt(i);
-            ChunkPos pos = new ChunkPos(chunkTag.getInteger("x"), chunkTag.getInteger("z"));
-            BlockSystemChunk chunk = new BlockSystemChunk(this, pos.x, pos.z);
-            chunk.deserialize(chunkTag);
-            this.savedChunks.put(pos, chunk);
-        }
-        this.deserializing = false;
-        this.recalculateMatrices();
-    }
-
-    public NBTTagCompound serialize(NBTTagCompound compound) {
-        compound.setDouble("pos_x", this.posX);
-        compound.setDouble("pos_y", this.posY);
-        compound.setDouble("pos_z", this.posZ);
-        compound.setTag("rot", this.rotation.serialize(new NBTTagCompound()));
-        NBTTagList chunksList = new NBTTagList();
-        for (Map.Entry<ChunkPos, BlockSystemChunk> entry : this.savedChunks.entrySet()) {
-            BlockSystemChunk chunk = entry.getValue();
-            if (!chunk.isEmpty()) {
-                ChunkPos pos = entry.getKey();
-                NBTTagCompound chunkTag = new NBTTagCompound();
-                chunkTag.setInteger("x", pos.x);
-                chunkTag.setInteger("z", pos.z);
-                chunk.serialize(chunkTag);
-                chunksList.appendTag(chunkTag);
-            }
-        }
-        compound.setTag("chunks", chunksList);
-        return compound;
     }
 
     public Point3d getTransformedPosition(Point3d position) {
@@ -168,6 +136,11 @@ public abstract class BlockSystem extends World {
         return position;
     }
 
+    public Point3d getPrevUntransformedPosition(Point3d position) {
+        this.prevUntransformMatrix.transform(position);
+        return position;
+    }
+
     public Vec3d getUntransformedPosition(Vec3d position) {
         Point3d point = new Point3d(position.x, position.y, position.z);
         this.untransformMatrix.transform(point);
@@ -188,24 +161,6 @@ public abstract class BlockSystem extends World {
     public void remove() {
         this.removed = true;
         BlockSystems.PROXY.getBlockSystemHandler(this.mainWorld).removeBlockSystem(this);
-    }
-
-    public BlockSystemPlayerHandler addPlayerHandler(EntityPlayer player) {
-        BlockSystemPlayerHandler handler = new BlockSystemPlayerHandler(this, player);
-        this.playerHandlers.put(player, handler);
-        return handler;
-    }
-
-    public void removePlayerHandler(EntityPlayer player) {
-        this.playerHandlers.remove(player);
-    }
-
-    public BlockSystemPlayerHandler getPlayerHandler(EntityPlayer player) {
-        return this.playerHandlers.get(player);
-    }
-
-    public Map<EntityPlayer, BlockSystemPlayerHandler> getPlayerHandlers() {
-        return this.playerHandlers;
     }
 
     @Override
@@ -286,7 +241,7 @@ public abstract class BlockSystem extends World {
 
     @Override
     public List<Entity> getEntitiesWithinAABBExcludingEntity(Entity entity, AxisAlignedBB bounds) {
-        //TODO Transform bounds
+        //TODO Transform bounds (or ignore? will blocksystems have entities)
         return this.mainWorld.getEntitiesWithinAABBExcludingEntity(entity, bounds);
     }
 
@@ -381,19 +336,6 @@ public abstract class BlockSystem extends World {
 
         if (this.boundEntity != null) {
             this.setPositionAndRotation(this.boundEntity.posX, this.boundEntity.posY, this.boundEntity.posZ, this.rotation);
-        }
-
-        List<EntityPlayer> remove = new ArrayList<>();
-
-        for (Map.Entry<EntityPlayer, BlockSystemPlayerHandler> entry : this.playerHandlers.entrySet()) {
-            entry.getValue().update();
-            if (entry.getKey().isDead) {
-                remove.add(entry.getKey());
-            }
-        }
-
-        for (EntityPlayer player : remove) {
-            this.playerHandlers.remove(player);
         }
 
         if (this.posX != this.prevPosX || this.posY != this.prevPosY || this.posZ != this.prevPosZ || !this.rotation.equals(this.prevRotation)) {
@@ -606,48 +548,6 @@ public abstract class BlockSystem extends World {
         return this.mainWorld;
     }
 
-    public void addSavedChunk(BlockSystemChunk chunk) {
-        this.savedChunks.put(new ChunkPos(chunk.x, chunk.z), chunk);
-    }
-
-    public void removeSavedChunk(BlockSystemChunk chunk) {
-        this.removeSavedChunk(new ChunkPos(chunk.x, chunk.z));
-    }
-
-    public void addPartition(BlockSystemChunk chunk) {
-        this.partitionChunks.put(chunk.getPartitionPosition(), chunk);
-    }
-
-    public void removePartition(ChunkPos chunk) {
-        this.partitionChunks.remove(chunk);
-    }
-
-    public void removeSavedChunk(ChunkPos pos) {
-        this.savedChunks.remove(pos);
-        if (this.savedChunks.size() <= 0 && this.mainWorld.isRemote) {
-            this.remove();
-        } else if (!this.mainWorld.isRemote) {
-            boolean allEmpty = true;
-            for (Map.Entry<ChunkPos, BlockSystemChunk> entry : this.savedChunks.entrySet()) {
-                if (!entry.getValue().isEmpty()) {
-                    allEmpty = false;
-                    break;
-                }
-            }
-            if (allEmpty) {
-                this.remove();
-            }
-        }
-    }
-
-    public BlockSystemChunk getSavedChunk(ChunkPos pos) {
-        return this.savedChunks.get(pos);
-    }
-
-    public BlockSystemChunk getPartitionChunk(ChunkPos pos) {
-        return this.partitionChunks.get(pos);
-    }
-
     @Override
     public boolean isValid(BlockPos pos) {
         return this.maximumBounds.grow(1).contains(new Vec3d(pos.getX(), pos.getY(), pos.getZ())) && pos.getY() >= 0 && pos.getY() < 256;
@@ -676,5 +576,15 @@ public abstract class BlockSystem extends World {
 
     public EncompassedAABB getRotatedBounds() {
         return this.rotatedBounds;
+    }
+
+    @Override
+    public int hashCode() {
+        return this.id * 31;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return obj instanceof BlockSystem && ((BlockSystem) obj).id == this.id;
     }
 }

@@ -5,11 +5,11 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
 
-import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.Map;
 
 public class BlockSystemWorldAccess {
-    private static final Map<World, ThreadLocal<Boolean>> BLOCK_ACCESS = new HashMap<>();
+    private static final Map<World, ThreadLocal<Boolean>> BLOCK_ACCESS = new IdentityHashMap<>();
 
     public static Chunk getChunk(World world, int x, int z) {
         ThreadLocal<Boolean> access = BlockSystemWorldAccess.getAccess(world);

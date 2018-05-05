@@ -71,6 +71,36 @@ public class QuatRotation {
         this.matrix.set(this.rotation);
     }
 
+    public double getX() {
+        return this.rotation.x;
+    }
+
+    public double getY() {
+        return this.rotation.y;
+    }
+
+    public double getZ() {
+        return this.rotation.z;
+    }
+
+    public double getW() {
+        return this.rotation.w;
+    }
+
+    public double toYaw() {
+        double x = this.rotation.x;
+        double y = this.rotation.y;
+        double z = this.rotation.z;
+        return Math.toDegrees(Math.atan2(2.0 * y - 2 * x * z, 1.0 - 2.0 * (y * y) - 2.0 * (z * z)));
+    }
+
+    public double toPitch() {
+        double x = this.rotation.getX();
+        double y = this.rotation.getY();
+        double z = this.rotation.getZ();
+        return Math.toDegrees(Math.asin(2.0 * x * y + 2.0 * z));
+    }
+
     public QuatRotation slerp(QuatRotation rotation, double intermediate) {
         QuatRotation slerp = new QuatRotation();
         slerp.rotation.interpolate(this.rotation, rotation.rotation, intermediate);

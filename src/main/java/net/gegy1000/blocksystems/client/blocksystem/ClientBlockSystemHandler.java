@@ -1,110 +1,100 @@
 package net.gegy1000.blocksystems.client.blocksystem;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntList;
+import net.gegy1000.blocksystems.BlockSystems;
 import net.gegy1000.blocksystems.client.render.blocksystem.BlockSystemRenderHandler;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
-import net.gegy1000.blocksystems.server.blocksystem.BlockSystemPlayerHandler;
-import net.gegy1000.blocksystems.server.blocksystem.ServerBlockSystemHandler;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.entity.EntityPlayerSP;
+import net.gegy1000.blocksystems.server.blocksystem.BlockSystemHandler;
+import net.gegy1000.blocksystems.server.blocksystem.interaction.BlockSystemInteractionHandler;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.util.math.RayTraceResult;
-import net.minecraft.world.World;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
 
-import java.util.Map;
+import javax.annotation.Nullable;
+import java.util.Collection;
 
-public class ClientBlockSystemHandler extends ServerBlockSystemHandler {
-    private static final Minecraft MINECRAFT = Minecraft.getMinecraft();
+@SideOnly(Side.CLIENT)
+public class ClientBlockSystemHandler implements BlockSystemHandler {
+    private final Int2ObjectMap<BlockSystem> blockSystems = new Int2ObjectOpenHashMap<>();
 
-    private BlockSystem mousedOver;
-    private RayTraceResult mousedOverResult;
+    private final BlockSystemInteractionHandler interactionHandler;
 
-    public ClientBlockSystemHandler(World world) {
-        super(world);
+    public ClientBlockSystemHandler(EntityPlayer player) {
+        this.interactionHandler = new ClientBlockSystemInteractionHandler(player);
     }
 
     @Override
     public void update() {
-        super.update();
-
-        EntityPlayerSP clientPlayer = MINECRAFT.player;
-
-        if (clientPlayer != null) {
-            Map.Entry<BlockSystem, RayTraceResult> mouseOver = this.getSelectedBlock(clientPlayer, MINECRAFT.objectMouseOver);
-
-            BlockSystem currentMousedOver = mouseOver != null ? mouseOver.getKey() : null;
-
-            if (mouseOver != null) {
-                BlockSystemPlayerHandler mouseOverHandler = this.get(mouseOver.getKey(), clientPlayer);
-                if (mouseOverHandler != null) {
-                    RayTraceResult prevMouseOver = mouseOverHandler.getMouseOver();
-                    mouseOverHandler.setMouseOver(mouseOver.getValue());
-                    if (prevMouseOver == null || !prevMouseOver.getBlockPos().equals(mouseOver.getValue().getBlockPos())) {
-                        mouseOverHandler.startBreaking(null);
-                    }
-                }
-            }
-
-            if (this.mousedOver != null && this.mousedOver != currentMousedOver) {
-                BlockSystemPlayerHandler mouseOverHandler = this.get(this.mousedOver, clientPlayer);
-                if (mouseOverHandler != null) {
-                    mouseOverHandler.startBreaking(null);
-                    mouseOverHandler.setMouseOver(null);
-                }
-            }
-
-            this.mousedOver = currentMousedOver;
-            this.mousedOverResult = mouseOver != null ? mouseOver.getValue() : null;
-
-            if (this.mousedOver != null && !MINECRAFT.gameSettings.keyBindAttack.isKeyDown()) {
-                BlockSystemPlayerHandler mouseOverHandler = this.get(this.mousedOver, clientPlayer);
-                if (mouseOverHandler != null) {
-                    mouseOverHandler.startBreaking(null);
-                }
-            }
-
-            if (this.mousedOver != null && MINECRAFT.gameSettings.keyBindPickBlock.isKeyDown()) {
-                BlockSystemPlayerHandler handler = this.get(this.mousedOver, clientPlayer);
-                if (handler != null) {
-                    handler.onPickBlock();
-                }
+        IntList removalQueue = new IntArrayList();
+        for (BlockSystem blockSystem : this.blockSystems.values()) {
+            if (!blockSystem.isRemoved()) {
+                blockSystem.tick();
+            } else {
+                removalQueue.add(blockSystem.getId());
             }
         }
-    }
 
-    @Override
-    public BlockSystem getMousedOver(EntityPlayer player) {
-        return this.mousedOver;
-    }
+        for (int system : removalQueue) {
+            this.blockSystems.remove(system);
+        }
 
-    @Override
-    public RayTraceResult getMousedOverResult(EntityPlayer player) {
-        return this.mousedOverResult;
+        this.interactionHandler.update();
     }
 
     @Override
     public void addBlockSystem(BlockSystem blockSystem) {
-        super.addBlockSystem(blockSystem);
-        BlockSystemRenderHandler.addBlockSystem(blockSystem);
-        blockSystem.addPlayerHandler(MINECRAFT.player);
-    }
-
-    @Override
-    public void removeBlockSystem(int id) {
-        BlockSystem blockSystem = this.getBlockSystem(id);
-        if (blockSystem != null) {
-            BlockSystemRenderHandler.removeBlockSystem(blockSystem);
+        if (!(blockSystem instanceof BlockSystemClient)) {
+            BlockSystems.LOGGER.warn("Tried to add non-client blocksystem ({}) to client handler!", blockSystem);
+            return;
         }
-        super.removeBlockSystem(id);
+
+        this.blockSystems.put(blockSystem.getId(), blockSystem);
+        BlockSystemRenderHandler.addBlockSystem((BlockSystemClient) blockSystem);
     }
 
     @Override
     public void removeBlockSystem(BlockSystem blockSystem) {
-        super.removeBlockSystem(blockSystem);
-        BlockSystemRenderHandler.removeBlockSystem(blockSystem);
+        this.removeBlockSystem(blockSystem.getId());
     }
 
     @Override
-    public boolean isServer() {
-        return false;
+    public void removeBlockSystem(int id) {
+        BlockSystem blockSystem = this.blockSystems.remove(id);
+        if (blockSystem != null) {
+            BlockSystemRenderHandler.removeBlockSystem(blockSystem);
+        }
+    }
+
+    @Nullable
+    @Override
+    public BlockSystem getBlockSystem(int id) {
+        return this.blockSystems.get(id);
+    }
+
+    @Override
+    public Collection<BlockSystem> getBlockSystems() {
+        return this.blockSystems.values();
+    }
+
+    @Override
+    public void addPlayer(EntityPlayer player) {
+    }
+
+    @Override
+    public void removePlayer(EntityPlayer player) {
+    }
+
+    @Nullable
+    @Override
+    public BlockSystemInteractionHandler getInteractionHandler(EntityPlayer player) {
+        return this.interactionHandler;
+    }
+
+    @Override
+    public void unload() {
+        BlockSystemRenderHandler.unload();
     }
 }

@@ -1,206 +1,124 @@
 package net.gegy1000.blocksystems.server.blocksystem;
 
-import net.gegy1000.blocksystems.server.util.collision.EncompassedAABB;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntList;
+import net.gegy1000.blocksystems.BlockSystems;
+import net.gegy1000.blocksystems.server.blocksystem.interaction.BlockSystemInteractionHandler;
+import net.gegy1000.blocksystems.server.blocksystem.interaction.ServerBlockSystemInteractionHandler;
 import net.gegy1000.blocksystems.server.world.data.BlockSystemSavedData;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.EnumActionResult;
-import net.minecraft.util.EnumHand;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.RayTraceResult;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
-import net.minecraftforge.event.ForgeEventFactory;
+import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.world.WorldServer;
 
-import java.util.ArrayList;
+import javax.annotation.Nullable;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
-public class ServerBlockSystemHandler {
-    protected World world;
+public class ServerBlockSystemHandler implements BlockSystemHandler {
+    private final WorldServer world;
+    private final Int2ObjectMap<BlockSystem> blockSystems = new Int2ObjectOpenHashMap<>();
+    private final IntList removalQueue = new IntArrayList();
 
-    protected Map<Integer, BlockSystem> blockSystems = new HashMap<>();
-    protected Map<EntityPlayer, Map.Entry<BlockSystem, RayTraceResult>> mouseOver = new HashMap<>();
+    private final Object lock = new Object();
 
-    public ServerBlockSystemHandler(World world) {
+    private final Map<EntityPlayer, BlockSystemInteractionHandler> interactionHandlers = new HashMap<>();
+
+    public ServerBlockSystemHandler(WorldServer world) {
         this.world = world;
     }
 
+    @Override
     public void update() {
-        List<Integer> removed = new ArrayList<>();
-        for (Map.Entry<Integer, BlockSystem> blockSystem : this.blockSystems.entrySet()) {
-            if (blockSystem.getValue().isRemoved()) {
-                removed.add(blockSystem.getKey());
+        for (BlockSystem blockSystem : this.blockSystems.values()) {
+            if (!blockSystem.isRemoved()) {
+                blockSystem.tick();
             } else {
-                blockSystem.getValue().tick();
+                this.removalQueue.add(blockSystem.getId());
             }
         }
-        for (Integer system : removed) {
-            this.blockSystems.remove(system);
-        }
-        if (this.isServer()) {
-            this.mouseOver.clear();
-            for (EntityPlayer player : this.world.playerEntities) {
-                this.mouseOver.put(player, this.getSelectedBlock(player, null));
+
+        synchronized (this.lock) {
+            for (int system : this.removalQueue) {
+                this.blockSystems.remove(system);
+                BlockSystemSavedData.get(this.world).removeBlockSystem(system);
             }
+
+            this.removalQueue.clear();
+        }
+
+        for (BlockSystemInteractionHandler interactionHandler : this.interactionHandlers.values()) {
+            interactionHandler.update();
         }
     }
 
-    public boolean onItemRightClick(EntityPlayer player, EnumHand hand) {
-        boolean success = this.interact(this.get(this.getMousedOver(player), player), player, hand);
-        ItemStack heldItem = player.getHeldItem(hand);
-        if (!heldItem.isEmpty()) {
-            int originalCount = heldItem.getCount();
-            ActionResult<ItemStack> result = heldItem.useItemRightClick(player.world, player, hand);
-            if (result.getType() != EnumActionResult.SUCCESS) {
-                for (Map.Entry<Integer, BlockSystem> blockSystem : this.blockSystems.entrySet()) {
-                    result = heldItem.useItemRightClick(blockSystem.getValue(), player, hand);
-                    if (result.getType() == EnumActionResult.SUCCESS) {
-                        break;
-                    }
-                }
-            }
-            success |= result.getType() == EnumActionResult.SUCCESS;
-            ItemStack output = result.getResult();
-            if (output != heldItem || output.getCount() != originalCount) {
-                if (player.capabilities.isCreativeMode && output.getCount() < originalCount) {
-                    output.setCount(originalCount);
-                }
-                player.setHeldItem(hand, output);
-                if (!output.isEmpty()) {
-                    player.setHeldItem(hand, ItemStack.EMPTY);
-                    ForgeEventFactory.onPlayerDestroyItem(player, output, hand);
-                }
-            }
-        }
-        return success;
-    }
-
-    public boolean interact(BlockSystemPlayerHandler handler, EntityPlayer player, EnumHand hand) {
-        if (handler != null) {
-            RayTraceResult mouseOver = handler.getMouseOver();
-            if (mouseOver != null && mouseOver.typeOfHit == RayTraceResult.Type.BLOCK) {
-                return handler.interact(hand);
-            }
-        }
-        return false;
-    }
-
-    public Map.Entry<BlockSystem, RayTraceResult> getSelectedBlock(EntityPlayer player, RayTraceResult defaultResult) {
-        float yaw = player.rotationYaw;
-        float pitch = player.rotationPitch;
-        double x = player.posX;
-        double y = player.posY + player.getEyeHeight();
-        double z = player.posZ;
-        Vec3d start = new Vec3d(x, y, z);
-        float pitchHorizontalFactor = -MathHelper.cos((float) -Math.toRadians(pitch));
-        float deltaY = MathHelper.sin((float) -Math.toRadians(pitch));
-        float deltaX = MathHelper.sin((float) -Math.toRadians(yaw - 180.0F)) * pitchHorizontalFactor;
-        float deltaZ = MathHelper.cos((float) -Math.toRadians(yaw - 180.0F)) * pitchHorizontalFactor;
-        double reach = player.getEntityAttribute(EntityPlayer.REACH_DISTANCE).getAttributeValue();
-        Vec3d end = start.addVector(deltaX * reach, deltaY * reach, deltaZ * reach);
-        Map<BlockSystem, RayTraceResult> results = new HashMap<>();
-        for (Map.Entry<Integer, BlockSystem> entry : this.blockSystems.entrySet()) {
-            BlockSystem blockSystem = entry.getValue();
-            EncompassedAABB bounds = blockSystem.getRotatedBounds();
-            if (bounds.intersects(player.getEntityBoundingBox().grow(reach + 1.0))) {
-                RayTraceResult result = blockSystem.rayTraceBlocks(start, end);
-                if (result != null && result.typeOfHit != RayTraceResult.Type.MISS) {
-                    results.put(blockSystem, result);
-                }
-            }
-        }
-        if (!results.isEmpty()) {
-            Map.Entry<BlockSystem, RayTraceResult> closest = null;
-            double closestDistance = Double.MAX_VALUE;
-            for (Map.Entry<BlockSystem, RayTraceResult> entry : results.entrySet()) {
-                BlockSystem blockSystem = entry.getKey();
-                RayTraceResult result = entry.getValue();
-                double distance = result.hitVec.distanceTo(blockSystem.getUntransformedPosition(start));
-                if (distance < closestDistance) {
-                    closest = entry;
-                    closestDistance = distance;
-                }
-            }
-            if (defaultResult != null && defaultResult.typeOfHit != RayTraceResult.Type.MISS) {
-                double distance = defaultResult.hitVec.distanceTo(start);
-                if (distance < closestDistance) {
-                    return null;
-                }
-            }
-            return closest;
-        }
-        return null;
-    }
-
+    @Override
     public void addBlockSystem(BlockSystem blockSystem) {
-        this.blockSystems.put(blockSystem.getID(), blockSystem);
-        if (!this.world.isRemote) {
-            BlockSystemSavedData.get(this.world).addBlockSystem(blockSystem);
+        if (!(blockSystem instanceof BlockSystemServer)) {
+            BlockSystems.LOGGER.warn("Tried to add non-server blocksystem ({}) to server handler!", blockSystem);
+            return;
         }
-        for (EntityPlayer player : this.world.playerEntities) {
-            blockSystem.addPlayerHandler(player);
-        }
+        this.blockSystems.put(blockSystem.getId(), blockSystem);
+        BlockSystemSavedData.get(this.world).addBlockSystem((BlockSystemServer) blockSystem);
     }
 
+    @Override
     public void loadBlockSystem(BlockSystem blockSystem) {
-        this.blockSystems.put(blockSystem.getID(), blockSystem);
+        this.blockSystems.put(blockSystem.getId(), blockSystem);
     }
 
-    public void unloadWorld() {
-        this.blockSystems.clear();
-        this.mouseOver.clear();
-    }
-
+    @Override
     public void removeBlockSystem(BlockSystem blockSystem) {
-        this.blockSystems.remove(blockSystem.getID());
-        if (!this.world.isRemote) {
-            BlockSystemSavedData.get(this.world).removeBlockSystem(blockSystem);
+        this.removeBlockSystem(blockSystem.getId());
+    }
+
+    @Override
+    public void removeBlockSystem(int id) {
+        synchronized (this.lock) {
+            this.removalQueue.add(id);
         }
     }
 
-    public void removeBlockSystem(int id) {
-        this.blockSystems.remove(id);
-    }
-
-    public Collection<BlockSystem> getBlockSystems() {
-        return this.blockSystems.values();
-    }
-
-    public BlockSystem getMousedOver(EntityPlayer player) {
-        Map.Entry<BlockSystem, RayTraceResult> mouseOver = this.mouseOver.get(player);
-        return mouseOver != null ? mouseOver.getKey() : null;
-    }
-
-    public RayTraceResult getMousedOverResult(EntityPlayer player) {
-        Map.Entry<BlockSystem, RayTraceResult> mouseOver = this.mouseOver.get(player);
-        return mouseOver != null ? mouseOver.getValue() : null;
-    }
-
-    public BlockSystemPlayerHandler get(BlockSystem blockSystem, EntityPlayer player) {
-        return blockSystem != null ? blockSystem.getPlayerHandlers().get(player) : null;
-    }
-
+    @Nullable
+    @Override
     public BlockSystem getBlockSystem(int id) {
         return this.blockSystems.get(id);
     }
 
+    @Override
+    public Collection<BlockSystem> getBlockSystems() {
+        return this.blockSystems.values();
+    }
+
+    @Override
     public void addPlayer(EntityPlayer player) {
-        for (Map.Entry<Integer, BlockSystem> entry : this.blockSystems.entrySet()) {
-            entry.getValue().addPlayerHandler(player);
-        }
+        this.interactionHandlers.put(player, new ServerBlockSystemInteractionHandler((EntityPlayerMP) player));
     }
 
+    @Override
     public void removePlayer(EntityPlayer player) {
-        for (Map.Entry<Integer, BlockSystem> entry : this.blockSystems.entrySet()) {
-            entry.getValue().removePlayerHandler(player);
+        this.interactionHandlers.remove(player);
+        if (player instanceof EntityPlayerMP) {
+            for (BlockSystem blockSystem : this.blockSystems.values()) {
+                // TODO: Abstract this?
+                if (blockSystem instanceof BlockSystemServer) {
+                    ((BlockSystemServer) blockSystem).getChunkTracker().removePlayer((EntityPlayerMP) player);
+                }
+            }
         }
     }
 
-    public boolean isServer() {
-        return true;
+    @Nullable
+    @Override
+    public BlockSystemInteractionHandler getInteractionHandler(EntityPlayer player) {
+        return this.interactionHandlers.get(player);
+    }
+
+    @Override
+    public void unload() {
+        this.blockSystems.clear();
+        this.interactionHandlers.clear();
     }
 }

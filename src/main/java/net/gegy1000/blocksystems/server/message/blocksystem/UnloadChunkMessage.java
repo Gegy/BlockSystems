@@ -22,7 +22,7 @@ public class UnloadChunkMessage extends BaseMessage<UnloadChunkMessage> {
     }
 
     public UnloadChunkMessage(BlockSystem blockSystem, int chunkX, int chunkZ) {
-        this.blockSystem = blockSystem.getID();
+        this.blockSystem = blockSystem.getId();
         this.chunkX = chunkX;
         this.chunkZ = chunkZ;
     }

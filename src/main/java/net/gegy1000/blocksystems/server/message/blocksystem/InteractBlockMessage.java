@@ -3,20 +3,19 @@ package net.gegy1000.blocksystems.server.message.blocksystem;
 import io.netty.buffer.ByteBuf;
 import net.gegy1000.blocksystems.BlockSystems;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
-import net.gegy1000.blocksystems.server.entity.FakePlayerWrapper;
+import net.gegy1000.blocksystems.server.blocksystem.BlockSystemHandler;
+import net.gegy1000.blocksystems.server.blocksystem.interaction.BlockSystemInteractionHandler;
 import net.gegy1000.blocksystems.server.message.BaseMessage;
-import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.item.ItemStack;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.util.EnumActionResult;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.EnumHand;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.WorldServer;
-import net.minecraftforge.event.ForgeEventFactory;
 import net.minecraftforge.fml.common.network.simpleimpl.MessageContext;
 
 public class InteractBlockMessage extends BaseMessage<InteractBlockMessage> {
@@ -32,7 +31,7 @@ public class InteractBlockMessage extends BaseMessage<InteractBlockMessage> {
     }
 
     public InteractBlockMessage(BlockSystem blockSystem, BlockPos position, EnumFacing side, float hitX, float hitY, float hitZ, EnumHand hand) {
-        this.blockSystem = blockSystem.getID();
+        this.blockSystem = blockSystem.getId();
         this.position = position;
         this.hand = hand;
         this.side = side;
@@ -65,28 +64,18 @@ public class InteractBlockMessage extends BaseMessage<InteractBlockMessage> {
 
     @Override
     public void onReceiveClient(Minecraft client, WorldClient world, EntityPlayerSP player, MessageContext context) {
-
     }
 
     @Override
     public void onReceiveServer(MinecraftServer server, WorldServer world, EntityPlayerMP player, MessageContext context) {
-        BlockSystem blockSystem = BlockSystems.PROXY.getBlockSystemHandler(world).getBlockSystem(this.blockSystem);
-        if (blockSystem != null) {
-            player = new FakePlayerWrapper(player, blockSystem, this.position);
-            IBlockState state = blockSystem.getBlockState(this.position);
-            ItemStack heldItem = player.getHeldItem(this.hand);
-            if (!state.getBlock().onBlockActivated(blockSystem, this.position, state, player, this.hand, this.side, this.hitX, this.hitY, this.hitZ)) {
-                if (!heldItem.isEmpty()) {
-                    int originalCount = heldItem.getCount();
-                    heldItem.onItemUse(player, blockSystem, this.position, this.hand, this.side, this.hitX, this.hitY, this.hitZ);
-                    if (player.capabilities.isCreativeMode && heldItem.getCount() < originalCount) {
-                        heldItem.setCount(originalCount);
-                    }
-                    if (heldItem.isEmpty()) {
-                        player.setHeldItem(this.hand, ItemStack.EMPTY);
-                        ForgeEventFactory.onPlayerDestroyItem(player, heldItem, this.hand);
-                    }
-                }
+        BlockSystemHandler blockSystemHandler = BlockSystems.PROXY.getBlockSystemHandler(world);
+        BlockSystem blockSystem = blockSystemHandler.getBlockSystem(this.blockSystem);
+        BlockSystemInteractionHandler interactionHandler = blockSystemHandler.getInteractionHandler(player);
+        if (blockSystem != null && interactionHandler != null) {
+            EnumActionResult result = interactionHandler.handleInteract(blockSystem, this.position, this.hand, this.side, this.hitX, this.hitY, this.hitZ);
+            if (result == EnumActionResult.SUCCESS) {
+                BlockSystems.NETWORK_WRAPPER.sendTo(new SetBlockMessage(blockSystem, this.position), player);
+                BlockSystems.NETWORK_WRAPPER.sendTo(new SetBlockMessage(blockSystem, this.position.offset(this.side)), player);
             }
         }
     }

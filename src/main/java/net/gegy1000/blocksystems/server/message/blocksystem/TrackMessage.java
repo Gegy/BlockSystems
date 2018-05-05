@@ -24,7 +24,7 @@ public class TrackMessage extends BaseMessage<TrackMessage> {
     }
 
     public TrackMessage(BlockSystem blockSystem) {
-        this.blockSystem = blockSystem.getID();
+        this.blockSystem = blockSystem.getId();
         this.posX = blockSystem.posX;
         this.posY = blockSystem.posY;
         this.posZ = blockSystem.posZ;

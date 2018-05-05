@@ -3,13 +3,11 @@ package net.gegy1000.blocksystems.client.render.blocksystem;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Queues;
 import com.google.common.collect.Sets;
-import net.gegy1000.blocksystems.BlockSystems;
+import net.gegy1000.blocksystems.client.ClientProxy;
+import net.gegy1000.blocksystems.client.blocksystem.BlockSystemClient;
 import net.gegy1000.blocksystems.client.render.blocksystem.chunk.BlockSystemRenderChunkContainer;
 import net.gegy1000.blocksystems.client.render.blocksystem.chunk.VBORenderChunkContainer;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
-import net.gegy1000.blocksystems.server.blocksystem.BlockSystemPlayerHandler;
-import net.gegy1000.blocksystems.server.blocksystem.ServerBlockSystemHandler;
-import net.gegy1000.blocksystems.server.blocksystem.chunk.BlockSystemChunk;
 import net.gegy1000.blocksystems.server.util.math.Matrix;
 import net.gegy1000.blocksystems.server.util.math.QuatRotation;
 import net.minecraft.block.Block;
@@ -45,7 +43,6 @@ import net.minecraft.util.SoundCategory;
 import net.minecraft.util.SoundEvent;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.util.math.Vec3d;
@@ -72,7 +69,7 @@ public class BlockSystemRenderer extends RenderGlobal implements IWorldEventList
     private static final BlockRendererDispatcher BLOCK_RENDERER_DISPATCHER = MC.getBlockRendererDispatcher();
     private static final TextureAtlasSprite[] DESTROY_STAGES = new TextureAtlasSprite[10];
 
-    private BlockSystem blockSystem;
+    private final BlockSystemClient blockSystem;
 
     private double lastViewEntityX = Double.MIN_VALUE;
     private double lastViewEntityY = Double.MIN_VALUE;
@@ -113,7 +110,7 @@ public class BlockSystemRenderer extends RenderGlobal implements IWorldEventList
         }
     }
 
-    public BlockSystemRenderer(BlockSystem blockSystem) {
+    public BlockSystemRenderer(BlockSystemClient blockSystem) {
         super(MC);
         this.blockSystem = blockSystem;
         this.viewDistance = -1;
@@ -176,14 +173,8 @@ public class BlockSystemRenderer extends RenderGlobal implements IWorldEventList
         this.renderEntities(partialTicks);
         this.renderBlockSelection(viewEntity);
 
+        // TODO: Sync breaking data to client
         Map<BlockPos, Integer> breaking = new HashMap<>();
-        for (Map.Entry<EntityPlayer, BlockSystemPlayerHandler> entry : this.blockSystem.getPlayerHandlers().entrySet()) {
-            BlockSystemPlayerHandler handler = entry.getValue();
-            BlockPos pos = handler.getBreaking();
-            if (pos != null) {
-                breaking.put(pos, (int) (handler.getBreakProgress() * 10.0F));
-            }
-        }
 
         if (breaking.size() > 0) {
             Tessellator tessellator = Tessellator.getInstance();
@@ -233,12 +224,11 @@ public class BlockSystemRenderer extends RenderGlobal implements IWorldEventList
 
     private void renderBlockSelection(Entity viewEntity) {
         RenderHelper.enableStandardItemLighting();
-        ServerBlockSystemHandler structureHandler = BlockSystems.PROXY.getBlockSystemHandler(this.blockSystem.getMainWorld());
-        if (viewEntity instanceof EntityPlayer && structureHandler.getMousedOver((EntityPlayer) viewEntity) == this.blockSystem) {
-            BlockSystemPlayerHandler handler = structureHandler.get(this.blockSystem, MC.player);
-            if (handler != null) {
-                RayTraceResult result = handler.getMouseOver();
-                BlockPos pos = result.getBlockPos();
+        BlockSystem mouseOverSystem = ClientProxy.getMouseOverSystem();
+        if (viewEntity instanceof EntityPlayer && this.blockSystem.equals(mouseOverSystem)) {
+            RayTraceResult mouseOver = ClientProxy.getMouseOver();
+            if (mouseOver != null) {
+                BlockPos pos = mouseOver.getBlockPos();
                 GlStateManager.enableBlend();
                 GlStateManager.tryBlendFuncSeparate(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
                 GlStateManager.glLineWidth(2.0F);
@@ -266,14 +256,13 @@ public class BlockSystemRenderer extends RenderGlobal implements IWorldEventList
 //                    if (!camera.isBoundingBoxInFrustum(blockEntity.getRenderBoundingBox())) {
 //                        continue;
 //                    }
-                BlockPos pos = blockEntity.getPos();
-                BlockSystemChunk chunk = this.blockSystem.getPartitionChunk(new ChunkPos(pos));
-                if (chunk != null) {
-                    ChunkPos chunkPos = chunk.getPos();
-                    int x = chunkPos.getXStart() + (pos.getX() & 0xF);
-                    int z = chunkPos.getZStart() + (pos.getZ() & 0xF);
-                    TileEntityRendererDispatcher.instance.render(blockEntity, x, pos.getY(), z, partialTicks);
-                }
+                BlockPos chunkPosition = information.chunk.getPosition();
+
+                BlockPos partition = blockEntity.getPos();
+                int localX = (partition.getX() & 0xF) + chunkPosition.getX();
+                int localY = (partition.getY() & 0xF) + chunkPosition.getY();
+                int localZ = (partition.getZ() & 0xF) + chunkPosition.getZ();
+                TileEntityRendererDispatcher.instance.render(blockEntity, localX, localY, localZ, partialTicks);
             }
         }
 
@@ -577,8 +566,12 @@ public class BlockSystemRenderer extends RenderGlobal implements IWorldEventList
     public void sendBlockBreakProgress(int breakerId, BlockPos pos, int progress) {
     }
 
+    public BlockSystemClient getBlockSystem() {
+        return this.blockSystem;
+    }
+
     @SideOnly(Side.CLIENT)
-    private class ChunkRenderInformation {
+    private static class ChunkRenderInformation {
         private final RenderChunk chunk;
         private final EnumFacing facing;
         private byte setFacing;

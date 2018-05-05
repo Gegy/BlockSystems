@@ -2,8 +2,6 @@ package net.gegy1000.blocksystems.client.render;
 
 import net.gegy1000.blocksystems.BlockSystems;
 import net.gegy1000.blocksystems.client.render.entity.BlockSystemControlRenderer;
-import net.gegy1000.blocksystems.server.api.DefaultRenderedItem;
-import net.gegy1000.blocksystems.server.block.BlockRegistry;
 import net.gegy1000.blocksystems.server.entity.BlockSystemControlEntity;
 import net.minecraft.block.Block;
 import net.minecraft.client.renderer.block.model.ModelResourceLocation;
@@ -21,21 +19,11 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 public class RenderRegistry {
     @SubscribeEvent
     public static void onModelRegistry(ModelRegistryEvent event) {
-        for (Block block : BlockRegistry.getRegisteredBlocks()) {
-            if (block instanceof DefaultRenderedItem) {
-                RenderRegistry.registerRenderer(block, ((DefaultRenderedItem) block).getResource(block.getRegistryName()));
-            }
-        }
+        RenderRegistry.registerRenderer(BlockSystems.BLOCK_SYSTEM, "block_system");
     }
 
     public static void onPreInit() {
         RenderingRegistry.registerEntityRenderingHandler(BlockSystemControlEntity.class, BlockSystemControlRenderer::new);
-    }
-
-    public static void onInit() {
-    }
-
-    public static void onPostInit() {
     }
 
     private static void registerRenderer(Item item, String name) {

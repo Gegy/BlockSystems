@@ -26,15 +26,16 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
+// TODO: A lot of this is directly copied: why?
 public class ServerChunkCacheBlockSystem extends ChunkProviderServer {
     private static final Logger LOGGER = LogManager.getLogger();
 
     private final Set<Long> droppedChunksSet = Sets.newHashSet();
-    public final BlockSystemServer world;
+    public final BlockSystemServer blockSystem;
 
-    public ServerChunkCacheBlockSystem(BlockSystemServer world, IChunkLoader chunkLoader) {
-        super((WorldServer) world.getMainWorld(), chunkLoader, new BlankChunkGenerator(world));
-        this.world = world;
+    public ServerChunkCacheBlockSystem(BlockSystemServer blockSystem, IChunkLoader chunkLoader) {
+        super((WorldServer) blockSystem.getMainWorld(), chunkLoader, new BlankChunkGenerator(blockSystem));
+        this.blockSystem = blockSystem;
     }
 
     @Override
@@ -44,7 +45,7 @@ public class ServerChunkCacheBlockSystem extends ChunkProviderServer {
 
     @Override
     public void queueUnload(Chunk chunk) {
-        if (this.world.provider.canDropChunk(chunk.x, chunk.z)) {
+        if (this.blockSystem.provider.canDropChunk(chunk.x, chunk.z)) {
             this.droppedChunksSet.add(ChunkPos.asLong(chunk.x, chunk.z));
             chunk.unloadQueued = true;
         }
@@ -59,7 +60,7 @@ public class ServerChunkCacheBlockSystem extends ChunkProviderServer {
 
     @Override
     public Chunk getLoadedChunk(int x, int z) {
-        BlockSystemChunk chunk = (BlockSystemChunk) this.id2ChunkMap.get(ChunkPos.asLong(x, z));
+        ServerBlockSystemChunk chunk = (ServerBlockSystemChunk) this.id2ChunkMap.get(ChunkPos.asLong(x, z));
         if (chunk != null) {
             chunk.unloadQueued = false;
         }
@@ -76,10 +77,10 @@ public class ServerChunkCacheBlockSystem extends ChunkProviderServer {
     public Chunk loadChunk(int x, int z, Runnable runnable) {
         Chunk chunk = this.getLoadedChunk(x, z);
         if (chunk == null) {
-            chunk = this.world.getSavedChunk(new ChunkPos(x, z));
+            chunk = this.blockSystem.getChunkHandler().getChunk(new ChunkPos(x, z));
             if (chunk == null) {
                 long pos = ChunkPos.asLong(x, z);
-                chunk = new BlockSystemChunk(this.world, x, z);
+                chunk = new ServerBlockSystemChunk(this.blockSystem, x, z);
                 this.id2ChunkMap.put(pos, chunk);
                 chunk.onLoad();
             }
@@ -94,7 +95,8 @@ public class ServerChunkCacheBlockSystem extends ChunkProviderServer {
     public Chunk provideChunk(int x, int z) {
         Chunk chunk = this.loadChunk(x, z);
         if (chunk == null) {
-            this.id2ChunkMap.put(ChunkPos.asLong(x, z), chunk = new BlockSystemChunk(this.world, x, z));
+            chunk = new ServerBlockSystemChunk(this.blockSystem, x, z);
+            this.id2ChunkMap.put(ChunkPos.asLong(x, z), chunk);
             chunk.onLoad();
         }
         return chunk;
@@ -102,7 +104,7 @@ public class ServerChunkCacheBlockSystem extends ChunkProviderServer {
 
     private void saveChunkExtraData(Chunk chunk) {
         try {
-            this.chunkLoader.saveExtraChunkData(this.world, chunk);
+            this.chunkLoader.saveExtraChunkData(this.blockSystem, chunk);
         } catch (Exception exception) {
             LOGGER.error("Couldn't save entities", exception);
         }
@@ -110,8 +112,8 @@ public class ServerChunkCacheBlockSystem extends ChunkProviderServer {
 
     private void saveChunkData(Chunk chunk) {
         try {
-            chunk.setLastSaveTime(this.world.getTotalWorldTime());
-            this.chunkLoader.saveChunk(this.world, chunk);
+            chunk.setLastSaveTime(this.blockSystem.getTotalWorldTime());
+            this.chunkLoader.saveChunk(this.blockSystem, chunk);
         } catch (IOException e) {
             LOGGER.error("Couldn't save chunk", e);
         } catch (MinecraftException e) {
@@ -146,9 +148,9 @@ public class ServerChunkCacheBlockSystem extends ChunkProviderServer {
 
     @Override
     public boolean tick() {
-        if (!this.world.disableLevelSaving) {
+        if (!this.blockSystem.disableLevelSaving) {
             if (!this.droppedChunksSet.isEmpty()) {
-                for (ChunkPos forced : this.world.getPersistentChunks().keySet()) {
+                for (ChunkPos forced : this.blockSystem.getPersistentChunks().keySet()) {
                     this.droppedChunksSet.remove(ChunkPos.asLong(forced.x, forced.z));
                 }
                 Iterator<Long> iterator = this.droppedChunksSet.iterator();
@@ -161,8 +163,8 @@ public class ServerChunkCacheBlockSystem extends ChunkProviderServer {
                         this.saveChunkExtraData(chunk);
                         this.id2ChunkMap.remove(id);
                         ++i;
-                        if (this.id2ChunkMap.size() == 0 && ForgeChunkManager.getPersistentChunksFor(this.world).size() == 0 && !this.world.provider.getDimensionType().shouldLoadSpawn()) {
-                            DimensionManager.unloadWorld(this.world.provider.getDimension());
+                        if (this.id2ChunkMap.size() == 0 && ForgeChunkManager.getPersistentChunksFor(this.blockSystem).size() == 0 && !this.blockSystem.provider.getDimensionType().shouldLoadSpawn()) {
+                            DimensionManager.unloadWorld(this.blockSystem.provider.getDimension());
                             break;
                         }
                     }
@@ -175,7 +177,7 @@ public class ServerChunkCacheBlockSystem extends ChunkProviderServer {
 
     @Override
     public boolean canSave() {
-        return !this.world.disableLevelSaving;
+        return !this.blockSystem.disableLevelSaving;
     }
 
     @Override

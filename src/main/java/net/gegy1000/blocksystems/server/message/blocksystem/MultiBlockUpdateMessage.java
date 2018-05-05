@@ -3,7 +3,7 @@ package net.gegy1000.blocksystems.server.message.blocksystem;
 import io.netty.buffer.ByteBuf;
 import net.gegy1000.blocksystems.BlockSystems;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
-import net.gegy1000.blocksystems.server.blocksystem.chunk.BlockSystemChunk;
+import net.gegy1000.blocksystems.server.blocksystem.chunk.ServerBlockSystemChunk;
 import net.gegy1000.blocksystems.server.message.BaseMessage;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
@@ -25,8 +25,8 @@ public class MultiBlockUpdateMessage extends BaseMessage<MultiBlockUpdateMessage
     public MultiBlockUpdateMessage() {
     }
 
-    public MultiBlockUpdateMessage(BlockSystem blockSystem, BlockSystemChunk chunk, int updateCount, short[] updates) {
-        this.blockSystem = blockSystem.getID();
+    public MultiBlockUpdateMessage(BlockSystem blockSystem, ServerBlockSystemChunk chunk, int updateCount, short[] updates) {
+        this.blockSystem = blockSystem.getId();
         this.pos = new ChunkPos(chunk.x, chunk.z);
         this.updates = new BlockUpdateData[updateCount];
         for (int i = 0; i < this.updates.length; ++i) {
@@ -84,7 +84,7 @@ public class MultiBlockUpdateMessage extends BaseMessage<MultiBlockUpdateMessage
             this.state = state;
         }
 
-        public BlockUpdateData(short pos, BlockSystemChunk chunk) {
+        public BlockUpdateData(short pos, ServerBlockSystemChunk chunk) {
             this.pos = pos;
             this.state = chunk.getBlockState(this.getPos());
         }

@@ -24,7 +24,7 @@ public class PlayEventMessage extends BaseMessage<PlayEventMessage> {
     }
 
     public PlayEventMessage(BlockSystem blockSystem, BlockPos position, int type, int data, boolean broadcast) {
-        this.blockSystem = blockSystem.getID();
+        this.blockSystem = blockSystem.getId();
         this.position = position;
         this.type = type;
         this.data = data;

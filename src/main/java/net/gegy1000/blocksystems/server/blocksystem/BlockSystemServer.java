@@ -2,27 +2,29 @@ package net.gegy1000.blocksystems.server.blocksystem;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import net.gegy1000.blocksystems.BlockSystems;
+import net.gegy1000.blocksystems.server.blocksystem.chunk.BlockSystemChunkTracker;
+import net.gegy1000.blocksystems.server.blocksystem.chunk.PartitionedChunkHandler;
+import net.gegy1000.blocksystems.server.blocksystem.chunk.ServerChunkCacheBlockSystem;
+import net.gegy1000.blocksystems.server.blocksystem.listener.ServerBlockSystemListener;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.crash.CrashReport;
 import net.minecraft.crash.CrashReportCategory;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.ReportedException;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.NextTickListEntry;
-import net.minecraft.world.World;
+import net.minecraft.world.WorldServer;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.IChunkProvider;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import net.minecraft.world.chunk.storage.IChunkLoader;
 import net.minecraft.world.gen.ChunkProviderServer;
 import net.minecraft.world.gen.structure.StructureBoundingBox;
-import net.gegy1000.blocksystems.server.blocksystem.chunk.BlockSystemChunkTracker;
-import net.gegy1000.blocksystems.server.blocksystem.chunk.ServerChunkCacheBlockSystem;
-import net.gegy1000.blocksystems.server.blocksystem.listener.ServerBlockSystemListener;
-import org.apache.logging.log4j.LogManager;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -40,8 +42,11 @@ public class BlockSystemServer extends BlockSystem {
     protected final TreeSet<NextTickListEntry> scheduledTicksTree = new TreeSet<>();
     protected final List<NextTickListEntry> currentScheduledTicks = new ArrayList<>();
 
-    public BlockSystemServer(MinecraftServer server, World mainWorld, int id) {
+    private final PartitionedChunkHandler chunkHandler;
+
+    public BlockSystemServer(MinecraftServer server, WorldServer mainWorld, int id) {
         super(mainWorld, id, server);
+        this.chunkHandler = new PartitionedChunkHandler(this, mainWorld);
     }
 
     @Override
@@ -71,35 +76,39 @@ public class BlockSystemServer extends BlockSystem {
     public void tick() {
         super.tick();
         this.updateBlocks();
+
         this.chunkTracker.tick();
+        if (this.chunkHandler.isEmpty()) {
+            this.remove();
+        }
     }
 
     @Override
     protected void updateBlocks() {
         int randomTickSpeed = this.getGameRules().getInt("randomTickSpeed");
-        this.profiler.startSection("pollingChunks");
+        this.profiler.startSection("pollingChunksBS");
         for (Iterator<Chunk> iterator = this.getPersistentChunkIterable(this.chunkTracker.getChunkIterator()); iterator.hasNext(); this.profiler.endSection()) {
-            this.profiler.startSection("getChunk");
+            this.profiler.startSection("getChunkBS");
             Chunk chunk = iterator.next();
-            int chunkX = chunk.x * 16;
-            int chunkZ = chunk.z * 16;
-            this.profiler.endStartSection("checkNextLight");
+            int chunkX = chunk.x << 4;
+            int chunkZ = chunk.z << 4;
+            this.profiler.endStartSection("checkNextLightBS");
             chunk.enqueueRelightChecks();
-            this.profiler.endStartSection("tickChunk");
+            this.profiler.endStartSection("tickChunkBS");
             chunk.onTick(false);
-            this.profiler.endStartSection("tickBlocks");
+            this.profiler.endStartSection("tickBlocksBS");
             if (randomTickSpeed > 0) {
                 for (ExtendedBlockStorage storage : chunk.getBlockStorageArray()) {
                     if (storage != Chunk.NULL_BLOCK_STORAGE && storage.needsRandomTick()) {
                         for (int tick = 0; tick < randomTickSpeed; ++tick) {
                             this.updateLCG = this.updateLCG * 3 + 1013904223;
                             int position = this.updateLCG >> 2;
-                            int x = position & 15;
-                            int y = position >> 8 & 15;
-                            int z = position >> 16 & 15;
+                            int x = position & 0xF;
+                            int y = position >> 8 & 0xF;
+                            int z = position >> 16 & 0xF;
                             IBlockState state = storage.get(x, z, y);
                             Block block = state.getBlock();
-                            this.profiler.startSection("randomTick");
+                            this.profiler.startSection("randomTickBS");
                             if (block.getTickRandomly()) {
                                 block.randomTick(this, new BlockPos(x + chunkX, z + storage.getYLocation(), y + chunkZ), state, this.rand);
                             }
@@ -115,8 +124,8 @@ public class BlockSystemServer extends BlockSystem {
     @Override
     public void updateBlockTick(BlockPos pos, Block block, int delay, int priority) {
         if (pos instanceof BlockPos.MutableBlockPos) {
-            pos = new BlockPos(pos);
-            LogManager.getLogger().warn("Tried to assign a mutable BlockPos to tick data...", new Error(pos.getClass().toString()));
+            pos = pos.toImmutable();
+            BlockSystems.LOGGER.warn("Tried to assign a mutable BlockPos to tick data...", new Error(pos.getClass().toString()));
         }
         Material material = block.getDefaultState().getMaterial();
         if (this.scheduledUpdatesAreImmediate && material != Material.AIR) {
@@ -239,6 +248,26 @@ public class BlockSystemServer extends BlockSystem {
         return this.currentScheduledTicks.contains(scheduledTick);
     }
 
+    public void deserialize(NBTTagCompound compound) {
+        this.deserializing = true;
+        this.posX = compound.getDouble("pos_x");
+        this.posY = compound.getDouble("pos_y");
+        this.posZ = compound.getDouble("pos_z");
+        this.rotation.deserialize(compound.getCompoundTag("rot"));
+        this.chunkHandler.deserialize(compound.getCompoundTag("block_data"));
+        this.deserializing = false;
+        this.recalculateMatrices();
+    }
+
+    public NBTTagCompound serialize(NBTTagCompound compound) {
+        compound.setDouble("pos_x", this.posX);
+        compound.setDouble("pos_y", this.posY);
+        compound.setDouble("pos_z", this.posZ);
+        compound.setTag("rot", this.rotation.serialize(new NBTTagCompound()));
+        compound.setTag("block_data", this.chunkHandler.serialize(new NBTTagCompound()));
+        return compound;
+    }
+
     @Override
     public MinecraftServer getMinecraftServer() {
         return this.server;
@@ -246,5 +275,9 @@ public class BlockSystemServer extends BlockSystem {
 
     public BlockSystemChunkTracker getChunkTracker() {
         return this.chunkTracker;
+    }
+
+    public PartitionedChunkHandler getChunkHandler() {
+        return this.chunkHandler;
     }
 }

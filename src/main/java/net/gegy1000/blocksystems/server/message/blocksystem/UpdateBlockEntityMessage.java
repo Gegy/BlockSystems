@@ -37,7 +37,7 @@ public class UpdateBlockEntityMessage extends BaseMessage<UpdateBlockEntityMessa
     }
 
     public UpdateBlockEntityMessage(BlockSystem blockSystem, BlockPos pos, int type, NBTTagCompound compound) {
-        this.blockSystem = blockSystem.getID();
+        this.blockSystem = blockSystem.getId();
         this.pos = pos;
         this.type = type;
         this.data = compound;

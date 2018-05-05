@@ -1,21 +1,30 @@
 package net.gegy1000.blocksystems.server.core;
 
 import net.gegy1000.blocksystems.BlockSystems;
+import net.gegy1000.blocksystems.client.ClientProxy;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
-import net.gegy1000.blocksystems.server.blocksystem.ServerBlockSystemHandler;
+import net.gegy1000.blocksystems.server.blocksystem.BlockSystemHandler;
+import net.gegy1000.blocksystems.server.blocksystem.interaction.BlockSystemInteractionHandler;
 import net.gegy1000.blocksystems.server.world.BlockSystemWorldAccess;
 import net.gegy1000.blocksystems.server.world.HookedChunk;
 import net.gegy1000.blocksystems.server.world.data.BlockSystemSavedData;
+import net.minecraft.block.material.Material;
+import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.particle.Particle;
 import net.minecraft.client.renderer.chunk.ChunkCompileTaskGenerator;
+import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.EnumActionResult;
 import net.minecraft.util.EnumFacing;
+import net.minecraft.util.EnumHand;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
+import net.minecraft.world.WorldServer;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 
@@ -93,10 +102,9 @@ public class BlockSystemHooks {
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.objectMouseOver != null && mc.player != null) {
             Vec3d eyePos = mc.player.getPositionEyes(1.0F);
-            ServerBlockSystemHandler handler = BlockSystems.PROXY.getBlockSystemHandler(mc.world);
-            BlockSystem blockSystem = handler.getMousedOver(mc.player);
-            if (blockSystem != null) {
-                RayTraceResult mousedOver = handler.getMousedOverResult(mc.player);
+            BlockSystem blockSystem = ClientProxy.getMouseOverSystem();
+            RayTraceResult mousedOver = ClientProxy.getMouseOver();
+            if (blockSystem != null && mousedOver != null) {
                 double length = mc.objectMouseOver.hitVec.subtract(eyePos).lengthSquared();
                 Vec3d blockSystemEyePos = blockSystem.getUntransformedPosition(eyePos);
                 if (mousedOver.hitVec.subtract(blockSystemEyePos).lengthSquared() < length) {
@@ -104,6 +112,49 @@ public class BlockSystemHooks {
                 }
             }
         }
+    }
+
+    public static boolean rightClickMouse() {
+        Minecraft mc = Minecraft.getMinecraft();
+        EntityPlayerSP player = mc.player;
+
+        if ((mc.objectMouseOver == null || mc.objectMouseOver.typeOfHit == RayTraceResult.Type.MISS) && player != null) {
+            BlockSystemHandler handler = BlockSystems.PROXY.getBlockSystemHandler(mc.world);
+            BlockSystemInteractionHandler interactionHandler = handler.getInteractionHandler(player);
+            if (interactionHandler == null) {
+                return false;
+            }
+
+            BlockSystem blockSystem = ClientProxy.getMouseOverSystem();
+            RayTraceResult mousedOver = ClientProxy.getMouseOver();
+            if (blockSystem == null || mousedOver == null || mousedOver.typeOfHit != RayTraceResult.Type.BLOCK) {
+                return false;
+            }
+
+            BlockPos pos = mousedOver.getBlockPos();
+            IBlockState state = blockSystem.getBlockState(pos);
+            for (EnumHand hand : EnumHand.values()) {
+                ItemStack stack = player.getHeldItem(hand);
+                if (state.getMaterial() != Material.AIR) {
+                    int previousCount = stack.getCount();
+
+                    float hitX = (float) (mousedOver.hitVec.x - pos.getX());
+                    float hitY = (float) (mousedOver.hitVec.y - pos.getY());
+                    float hitZ = (float) (mousedOver.hitVec.z - pos.getZ());
+
+                    EnumActionResult result = interactionHandler.handleInteract(blockSystem, pos, hand, mousedOver.sideHit, hitX, hitY, hitZ);
+                    if (result == EnumActionResult.SUCCESS) {
+                        player.swingArm(hand);
+                        if (!stack.isEmpty() && (stack.getCount() != previousCount || mc.player.isCreative())) {
+                            mc.entityRenderer.itemRenderer.resetEquippedProgress(hand);
+                        }
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
     }
 
     public static BlockPos chunkWorkerGetPosition(ChunkCompileTaskGenerator generator, BlockPos pos) {
@@ -132,10 +183,12 @@ public class BlockSystemHooks {
     }
 
     private static World getBlockSystemWorld(World world, ChunkPos pos) {
-        BlockSystemSavedData data = BlockSystemSavedData.get(world, false);
-        BlockSystem blockSystem = data.getBlockSystem(pos);
-        if (blockSystem != null) {
-            return blockSystem;
+        if (world instanceof WorldServer) {
+            BlockSystemSavedData data = BlockSystemSavedData.get((WorldServer) world, false);
+            BlockSystem blockSystem = data.getBlockSystem(pos);
+            if (blockSystem != null) {
+                return blockSystem;
+            }
         }
         return world;
     }

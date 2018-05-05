@@ -7,6 +7,7 @@ import net.gegy1000.blocksystems.server.transformer.ChunkTransformer;
 import net.gegy1000.blocksystems.server.transformer.EntityListTransformer;
 import net.gegy1000.blocksystems.server.transformer.EntityRendererTransformer;
 import net.gegy1000.blocksystems.server.transformer.EntityTransformer;
+import net.gegy1000.blocksystems.server.transformer.MinecraftTransformer;
 import net.gegy1000.blocksystems.server.transformer.ParticleManagerTransformer;
 import net.gegy1000.blocksystems.server.transformer.TileEntityTransformer;
 import net.gegy1000.blocksystems.server.transformer.WorldTransformer;
@@ -72,7 +73,7 @@ public class BlockSystemTransformer implements IClassTransformer {
                         transformed |= transformer.transform(classNode, transformedName);
                     }
                     if (transformed) {
-                        ClassWriter classWriter = new ClassWriter(classReader, ClassWriter.COMPUTE_MAXS);
+                        ClassWriter classWriter = new PatchClassWriter(classReader, ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
                         classNode.accept(classWriter);
                         this.saveBytecode(transformedName, classWriter);
                         bytes = classWriter.toByteArray();
@@ -93,6 +94,7 @@ public class BlockSystemTransformer implements IClassTransformer {
         this.transformers.add(new EntityRendererTransformer());
         this.transformers.add(new ChunkRenderWorkerTransformer());
         this.transformers.add(new TileEntityTransformer());
+        this.transformers.add(new MinecraftTransformer());
     }
 
     private void saveBytecode(String name, ClassWriter classWriter) {

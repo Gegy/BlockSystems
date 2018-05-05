@@ -2,9 +2,8 @@ package net.gegy1000.blocksystems.server;
 
 import net.gegy1000.blocksystems.BlockSystems;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
-import net.gegy1000.blocksystems.server.blocksystem.BlockSystemServer;
+import net.gegy1000.blocksystems.server.blocksystem.BlockSystemHandler;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystemTrackingHandler;
-import net.gegy1000.blocksystems.server.blocksystem.ServerBlockSystemHandler;
 import net.gegy1000.blocksystems.server.core.BlockSystemHooks;
 import net.gegy1000.blocksystems.server.util.math.QuatRotation;
 import net.gegy1000.blocksystems.server.world.BlockSystemWorldAccess;
@@ -12,16 +11,12 @@ import net.gegy1000.blocksystems.server.world.data.BlockSystemSavedData;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.util.EnumHand;
 import net.minecraft.util.math.AxisAlignedBB;
-import net.minecraft.util.math.MathHelper;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.living.LivingEvent;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.world.GetCollisionBoxesEvent;
 import net.minecraftforge.event.world.WorldEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -30,7 +25,7 @@ import net.minecraftforge.fml.common.gameevent.PlayerEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent.Phase;
 
-import javax.vecmath.Vector3f;
+import javax.vecmath.Point3d;
 import java.util.Collection;
 
 @Mod.EventBusSubscriber(modid = BlockSystems.MODID)
@@ -40,7 +35,7 @@ public class ServerEventHandler {
         if (event.phase == Phase.START) {
             World world = event.world;
             if (!BlockSystems.PROXY.isPaused(world)) {
-                ServerBlockSystemHandler handler = BlockSystems.PROXY.getBlockSystemHandler(world);
+                BlockSystemHandler handler = BlockSystems.PROXY.getBlockSystemHandler(world);
                 if (handler != null) {
                     handler.update();
                 }
@@ -58,7 +53,7 @@ public class ServerEventHandler {
         EntityLivingBase entity = event.getEntityLiving();
         AxisAlignedBB entityBounds = entity.getEntityBoundingBox().grow(0.02);
 
-        ServerBlockSystemHandler handler = BlockSystems.PROXY.getBlockSystemHandler(entity.world);
+        BlockSystemHandler handler = BlockSystems.PROXY.getBlockSystemHandler(entity.world);
         for (BlockSystem blockSystem : handler.getBlockSystems()) {
             AxisAlignedBB encompassing = blockSystem.getRotatedBounds().getAabb();
             if (entityBounds.intersects(encompassing)) {
@@ -69,19 +64,16 @@ public class ServerEventHandler {
                         break;
                     }
                 }
+
                 if (collides) {
-                    float pitchHorizontalFactor = -MathHelper.cos((float) -Math.toRadians(entity.rotationPitch));
-                    float deltaX = MathHelper.sin((float) -Math.toRadians(entity.rotationYaw - 180.0F)) * pitchHorizontalFactor;
-                    float deltaY = MathHelper.sin((float) -Math.toRadians(entity.rotationPitch));
-                    float deltaZ = MathHelper.cos((float) -Math.toRadians(entity.rotationYaw - 180.0F)) * pitchHorizontalFactor;
-                    Vector3f vec = new Vector3f(deltaX, deltaY, deltaZ);
-                    QuatRotation rotation = blockSystem.prevRotation.difference(blockSystem.rotation);
-                    rotation.getMatrix().transform(vec);
-                    float transformYaw = (float) (-Math.atan2(vec.x, vec.z) * 180.0F / Math.PI) - entity.rotationYaw;
-                    float transformPitch = (float) (-Math.asin(vec.y) * (180.0F / Math.PI)) - entity.rotationPitch;
-                    entity.rotationYaw += transformYaw;
-                    entity.renderYawOffset += transformYaw;
-                    entity.rotationPitch += transformPitch;
+                    QuatRotation rotation = blockSystem.rotation.difference(blockSystem.prevRotation);
+
+                    Point3d local = blockSystem.getPrevUntransformedPosition(new Point3d(entity.posX, entity.posY, entity.posZ));
+                    Point3d transformedGlobal = blockSystem.getTransformedPosition(local);
+
+                    float transformedYaw = entity.rotationYaw + (float) rotation.toYaw();
+                    float transformedPitch = entity.rotationPitch + (float) rotation.toPitch();
+                    entity.setPositionAndRotation(transformedGlobal.x, transformedGlobal.y, transformedGlobal.z, transformedYaw, transformedPitch);
                 }
             }
         }
@@ -95,7 +87,7 @@ public class ServerEventHandler {
             AxisAlignedBB entityBounds = event.getAabb();
 
             // TODO: This is O(n) and not ideal
-            ServerBlockSystemHandler handler = BlockSystems.PROXY.getBlockSystemHandler(world);
+            BlockSystemHandler handler = BlockSystems.PROXY.getBlockSystemHandler(world);
             Collection<BlockSystem> blockSystems = handler.getBlockSystems();
             for (BlockSystem blockSystem : blockSystems) {
                 // TODO: Keep track of bounds that are being *used*, not just the maximum bounds for the whole blocksystem
@@ -109,12 +101,10 @@ public class ServerEventHandler {
 
     @SubscribeEvent
     public static void onEntityJoinWorld(EntityJoinWorldEvent event) {
-        World world = event.getWorld();
         Entity entity = event.getEntity();
         if (entity instanceof EntityPlayer) {
             EntityPlayer player = (EntityPlayer) entity;
-            ServerBlockSystemHandler handler = BlockSystems.PROXY.getBlockSystemHandler(world);
-            handler.addPlayer(player);
+            BlockSystems.PROXY.getBlockSystemHandler(event.getWorld()).addPlayer(player);
         }
     }
 
@@ -122,41 +112,20 @@ public class ServerEventHandler {
     public static void onLivingDeath(LivingDeathEvent event) {
         Entity entity = event.getEntity();
         if (entity instanceof EntityPlayer) {
-            removePlayer((EntityPlayer) entity, entity.world);
+            BlockSystems.PROXY.getBlockSystemHandler(entity.world).removePlayer((EntityPlayer) entity);
         }
     }
 
     @SubscribeEvent
     public static void onPlayerQuit(PlayerEvent.PlayerLoggedOutEvent event) {
-        removePlayer(event.player, event.player.world);
-    }
-
-    private static void removePlayer(EntityPlayer player, World world) {
-        if (world instanceof WorldServer && player instanceof EntityPlayerMP) {
-            Collection<BlockSystem> blockSystems = BlockSystems.PROXY.getBlockSystemHandler(world).getBlockSystems();
-            for (BlockSystem blockSystem : blockSystems) {
-                if (blockSystem instanceof BlockSystemServer) {
-                    ((BlockSystemServer) blockSystem).getChunkTracker().removePlayer((EntityPlayerMP) player);
-                }
-            }
-        }
-    }
-
-    @SubscribeEvent
-    public static void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
-        EntityPlayer player = event.getEntityPlayer();
-        EnumHand hand = event.getHand();
-        ServerBlockSystemHandler structureHandler = BlockSystems.PROXY.getBlockSystemHandler(event.getWorld());
-        if (structureHandler.onItemRightClick(player, hand)) {
-            event.setCanceled(true);
-        }
+        BlockSystems.PROXY.getBlockSystemHandler(event.player.world).removePlayer(event.player);
     }
 
     @SubscribeEvent
     public static void onWorldLoad(WorldEvent.Load event) {
         World world = event.getWorld();
-        BlockSystemSavedData.get(world);
         if (world instanceof WorldServer) {
+            BlockSystemSavedData.get((WorldServer) world);
             BlockSystemTrackingHandler.add((WorldServer) world);
         }
         BlockSystemHooks.onWorldLoad(world);
@@ -165,11 +134,12 @@ public class ServerEventHandler {
     @SubscribeEvent
     public static void onWorldUnload(WorldEvent.Unload event) {
         World world = event.getWorld();
-        BlockSystemSavedData.get(world);
         if (world instanceof WorldServer) {
+            BlockSystemSavedData.get((WorldServer) world);
             BlockSystemTrackingHandler.remove((WorldServer) world);
         }
         BlockSystemWorldAccess.unloadWorld(world);
         BlockSystemHooks.onWorldUnload(world);
+        BlockSystems.PROXY.unload(world);
     }
 }

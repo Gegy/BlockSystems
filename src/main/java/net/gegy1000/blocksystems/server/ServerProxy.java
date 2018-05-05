@@ -1,6 +1,7 @@
 package net.gegy1000.blocksystems.server;
 
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
+import net.gegy1000.blocksystems.server.blocksystem.BlockSystemHandler;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystemServer;
 import net.gegy1000.blocksystems.server.blocksystem.ServerBlockSystemHandler;
 import net.gegy1000.blocksystems.server.message.BaseMessage;
@@ -11,7 +12,6 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
-import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minecraftforge.fml.common.network.simpleimpl.MessageContext;
 
 import java.util.HashMap;
@@ -32,7 +32,11 @@ public class ServerProxy {
     }
 
     public BlockSystem createBlockSystem(World mainWorld, int id) {
-        return new BlockSystemServer(mainWorld instanceof WorldServer ? mainWorld.getMinecraftServer() : FMLCommonHandler.instance().getMinecraftServerInstance(), mainWorld, id);
+        if (mainWorld instanceof WorldServer) {
+            WorldServer serverWorld = (WorldServer) mainWorld;
+            return new BlockSystemServer(serverWorld.getMinecraftServer(), serverWorld, id);
+        }
+        throw new IllegalArgumentException("Cannot create ServerBlockSystem from client world!");
     }
 
     public void playSound(ISound sound) {
@@ -51,8 +55,18 @@ public class ServerProxy {
         this.scheduleTask(context, () -> message.onReceiveServer(player.getServer(), (WorldServer) player.world, player, context));
     }
 
-    public ServerBlockSystemHandler getBlockSystemHandler(World world) {
-        return BLOCK_SYSTEM_HANDLERS.computeIfAbsent(world, key -> new ServerBlockSystemHandler(world));
+    public BlockSystemHandler getBlockSystemHandler(World world) {
+        if (world instanceof WorldServer) {
+            return BLOCK_SYSTEM_HANDLERS.computeIfAbsent(world, key -> new ServerBlockSystemHandler((WorldServer) world));
+        }
+        throw new IllegalArgumentException("Cannot create ServerBlockSystemHandler from client world!");
+    }
+
+    public void unload(World world) {
+        BlockSystemHandler handler = BLOCK_SYSTEM_HANDLERS.remove(world);
+        if (handler != null) {
+            handler.unload();
+        }
     }
 
     public boolean isClientPlayer(EntityPlayer player) {

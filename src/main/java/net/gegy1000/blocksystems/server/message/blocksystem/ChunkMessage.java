@@ -5,8 +5,11 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import net.gegy1000.blocksystems.BlockSystems;
 import net.gegy1000.blocksystems.client.blocksystem.BlockSystemClient;
+import net.gegy1000.blocksystems.client.blocksystem.chunk.ClientBlockSystemChunk;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
-import net.gegy1000.blocksystems.server.blocksystem.chunk.BlockSystemChunk;
+import net.gegy1000.blocksystems.server.blocksystem.BlockSystemServer;
+import net.gegy1000.blocksystems.server.blocksystem.chunk.PartitionedChunk;
+import net.gegy1000.blocksystems.server.message.BaseMessage;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.multiplayer.WorldClient;
@@ -16,14 +19,12 @@ import net.minecraft.network.PacketBuffer;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.WorldProviderSurface;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import net.minecraftforge.fml.common.network.ByteBufUtils;
 import net.minecraftforge.fml.common.network.simpleimpl.MessageContext;
-import net.gegy1000.blocksystems.server.message.BaseMessage;
 
 import java.util.List;
 import java.util.Map;
@@ -32,31 +33,29 @@ public class ChunkMessage extends BaseMessage<ChunkMessage> {
     private int blockSystem;
     private int x;
     private int z;
-    private ChunkPos partitionPosition;
     private int availableSections;
     private byte[] buffer;
-    private List<NBTTagCompound> tileEntityTags;
+    private List<TileUpdate> tileUpdates;
     private boolean loadChunk;
 
     public ChunkMessage() {
     }
 
-    public ChunkMessage(BlockSystem blockSystem, BlockSystemChunk chunk, int mask) {
-        this.blockSystem = blockSystem.getID();
+    public ChunkMessage(BlockSystemServer blockSystem, PartitionedChunk chunk, int mask) {
+        this.blockSystem = blockSystem.getId();
         this.x = chunk.x;
         this.z = chunk.z;
-        this.loadChunk = mask == 65535;
-        this.partitionPosition = chunk.getPartitionPosition();
+        this.loadChunk = mask == 0xFFFF;
         boolean hasSkylight = !blockSystem.getMainWorld().provider.isNether();
         this.buffer = new byte[this.calculateChunkSize(chunk, hasSkylight, mask)];
         this.availableSections = this.extractChunkData(new PacketBuffer(this.getWriteBuffer()), chunk, hasSkylight, mask);
-        this.tileEntityTags = Lists.newArrayList();
+        this.tileUpdates = Lists.newArrayList();
         for (Map.Entry<BlockPos, TileEntity> entry : chunk.getTileEntityMap().entrySet()) {
             BlockPos pos = entry.getKey();
             TileEntity tile = entry.getValue();
             int storageIndex = pos.getY() >> 4;
             if (this.loadChunk || (mask & 1 << storageIndex) != 0) {
-                this.tileEntityTags.add(tile.getUpdateTag());
+                this.tileUpdates.add(new TileUpdate(chunk.fromPartition(tile.getPos()), tile.getUpdateTag()));
             }
         }
     }
@@ -70,11 +69,9 @@ public class ChunkMessage extends BaseMessage<ChunkMessage> {
         buf.writeInt(this.availableSections);
         buf.writeInt(this.buffer.length);
         buf.writeBytes(this.buffer);
-        buf.writeInt(this.partitionPosition.x);
-        buf.writeInt(this.partitionPosition.z);
-        buf.writeInt(this.tileEntityTags.size());
-        for (NBTTagCompound tag : this.tileEntityTags) {
-            ByteBufUtils.writeTag(buf, tag);
+        buf.writeShort(this.tileUpdates.size());
+        for (TileUpdate update : this.tileUpdates) {
+            update.serialize(buf);
         }
     }
 
@@ -88,11 +85,10 @@ public class ChunkMessage extends BaseMessage<ChunkMessage> {
         int bufferSize = buf.readInt();
         this.buffer = new byte[bufferSize];
         buf.readBytes(this.buffer);
-        this.partitionPosition = new ChunkPos(buf.readInt(), buf.readInt());
-        int tileCount = buf.readInt();
-        this.tileEntityTags = Lists.newArrayList();
+        int tileCount = buf.readUnsignedShort();
+        this.tileUpdates = Lists.newArrayList();
         for (int i = 0; i < tileCount; i++) {
-            this.tileEntityTags.add(ByteBufUtils.readTag(buf));
+            this.tileUpdates.add(TileUpdate.deserialize(buf));
         }
     }
 
@@ -104,21 +100,16 @@ public class ChunkMessage extends BaseMessage<ChunkMessage> {
             if (this.loadChunk) {
                 clientSystem.loadChunkAction(this.x, this.z, true);
             }
-            BlockSystemChunk chunk = (BlockSystemChunk) clientSystem.getChunkFromChunkCoords(this.x, this.z);
-            chunk.setPartitionPosition(this.partitionPosition);
+            ClientBlockSystemChunk chunk = (ClientBlockSystemChunk) clientSystem.getChunkFromChunkCoords(this.x, this.z);
             chunk.read(this.getReadBuffer(), this.availableSections, this.loadChunk);
-            clientSystem.markBlockRangeForRenderUpdate(this.x << 4, 0, this.z << 4, (this.x << 4) + 15, 256, (this.z << 4) + 15);
+            clientSystem.markBlockRangeForRenderUpdate(this.x << 4, 0, this.z << 4, (this.x << 4) + 15, 255, (this.z << 4) + 15);
             if (!this.loadChunk || !(clientSystem.provider instanceof WorldProviderSurface)) {
                 chunk.resetRelightChecks();
             }
-            for (NBTTagCompound tag : this.tileEntityTags) {
-                int x = tag.getInteger("x");
-                int y = tag.getInteger("y");
-                int z = tag.getInteger("z");
-                BlockSystemChunk partitionChunk = clientSystem.getPartitionChunk(new ChunkPos(x >> 4, z >> 4));
-                TileEntity tile = clientSystem.getTileEntity(new BlockPos((x & 0xF) + (partitionChunk.x << 4), y & 0xFF, (z & 0xF) + (partitionChunk.z << 4)));
+            for (TileUpdate update : this.tileUpdates) {
+                TileEntity tile = clientSystem.getTileEntity(update.localPos);
                 if (tile != null) {
-                    tile.handleUpdateTag(tag);
+                    tile.handleUpdateTag(update.tag);
                 }
             }
         }
@@ -134,17 +125,17 @@ public class ChunkMessage extends BaseMessage<ChunkMessage> {
         return buffer;
     }
 
-    public int extractChunkData(PacketBuffer buffer, BlockSystemChunk chunk, boolean skylight, int mask) {
+    private int extractChunkData(PacketBuffer buffer, PartitionedChunk chunk, boolean skylight, int mask) {
         int availableSections = 0;
-        ExtendedBlockStorage[] storages = chunk.getBlockStorageArray();
-        for (int storageIndex = 0; storageIndex < storages.length; storageIndex++) {
-            ExtendedBlockStorage storage = storages[storageIndex];
-            if (storage != Chunk.NULL_BLOCK_STORAGE && (!this.loadChunk || !storage.isEmpty()) && (mask & 1 << storageIndex) != 0) {
+        ExtendedBlockStorage[] sections = chunk.getBlockStorageArray();
+        for (int storageIndex = 0; storageIndex < sections.length; storageIndex++) {
+            ExtendedBlockStorage section = sections[storageIndex];
+            if (section != Chunk.NULL_BLOCK_STORAGE && (!this.loadChunk || !section.isEmpty()) && (mask & 1 << storageIndex) != 0) {
                 availableSections |= 1 << storageIndex;
-                storage.getData().write(buffer);
-                buffer.writeBytes(storage.getBlockLight().getData());
+                section.getData().write(buffer);
+                buffer.writeBytes(section.getBlockLight().getData());
                 if (skylight) {
-                    buffer.writeBytes(storage.getSkyLight().getData());
+                    buffer.writeBytes(section.getSkyLight().getData());
                 }
             }
         }
@@ -154,16 +145,16 @@ public class ChunkMessage extends BaseMessage<ChunkMessage> {
         return availableSections;
     }
 
-    protected int calculateChunkSize(BlockSystemChunk chunk, boolean skylight, int mask) {
+    private int calculateChunkSize(PartitionedChunk chunk, boolean skylight, int mask) {
         int size = 0;
-        ExtendedBlockStorage[] storages = chunk.getBlockStorageArray();
-        for (int i = 0; i < storages.length; i++) {
-            ExtendedBlockStorage storage = storages[i];
-            if (storage != Chunk.NULL_BLOCK_STORAGE && (!this.loadChunk || !storage.isEmpty()) && (mask & 1 << i) != 0) {
-                size = size + storage.getData().getSerializedSize();
-                size = size + storage.getBlockLight().getData().length;
+        ExtendedBlockStorage[] sections = chunk.getBlockStorageArray();
+        for (int i = 0; i < sections.length; i++) {
+            ExtendedBlockStorage section = sections[i];
+            if (section != Chunk.NULL_BLOCK_STORAGE && (!this.loadChunk || !section.isEmpty()) && (mask & 1 << i) != 0) {
+                size = size + section.getData().getSerializedSize();
+                size = size + section.getBlockLight().getData().length;
                 if (skylight) {
-                    size += storage.getSkyLight().getData().length;
+                    size += section.getSkyLight().getData().length;
                 }
             }
         }
@@ -173,7 +164,28 @@ public class ChunkMessage extends BaseMessage<ChunkMessage> {
         return size;
     }
 
-    protected PacketBuffer getReadBuffer() {
+    private PacketBuffer getReadBuffer() {
         return new PacketBuffer(Unpooled.wrappedBuffer(this.buffer));
+    }
+
+    private static class TileUpdate {
+        private final BlockPos localPos;
+        private final NBTTagCompound tag;
+
+        private TileUpdate(BlockPos localPos, NBTTagCompound tag) {
+            this.localPos = localPos;
+            this.tag = tag;
+        }
+
+        public void serialize(ByteBuf buf) {
+            buf.writeLong(this.localPos.toLong());
+            ByteBufUtils.writeTag(buf, this.tag);
+        }
+
+        public static TileUpdate deserialize(ByteBuf buf) {
+            BlockPos pos = BlockPos.fromLong(buf.readLong());
+            NBTTagCompound compound = ByteBufUtils.readTag(buf);
+            return new TileUpdate(pos, compound);
+        }
     }
 }

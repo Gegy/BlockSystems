@@ -19,7 +19,7 @@ public class UntrackMessage extends BaseMessage<UntrackMessage> {
     }
 
     public UntrackMessage(BlockSystem blockSystem) {
-        this.blockSystem = blockSystem.getID();
+        this.blockSystem = blockSystem.getId();
     }
 
     @Override

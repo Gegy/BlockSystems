@@ -23,10 +23,10 @@ public class SetBlockMessage extends BaseMessage<SetBlockMessage> {
     public SetBlockMessage() {
     }
 
-    public SetBlockMessage(BlockSystem system, BlockPos position, IBlockState state) {
-        this.blockSystem = system.getID();
+    public SetBlockMessage(BlockSystem system, BlockPos position) {
+        this.blockSystem = system.getId();
         this.position = position;
-        this.state = state;
+        this.state = system.getBlockState(position);
     }
 
     @Override
