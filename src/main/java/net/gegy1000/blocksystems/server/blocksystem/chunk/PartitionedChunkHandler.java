@@ -100,7 +100,6 @@ public class PartitionedChunkHandler {
                     IBlockState state = partition.getBlockState(pos);
                     section.set(pos.getX(), pos.getY() & 15, pos.getZ(), state);
                     if (state.getBlock() != Blocks.AIR) {
-                        System.out.println(state);
                         count++;
                     }
                 }

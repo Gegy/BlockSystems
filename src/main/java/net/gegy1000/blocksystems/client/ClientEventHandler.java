@@ -38,9 +38,10 @@ public class ClientEventHandler {
             WorldClient world = MINECRAFT.world;
             if (world != null && !BlockSystems.PROXY.isPaused(world)) {
                 BlockSystemHandler blockSystemHandler = BlockSystems.PROXY.getBlockSystemHandler(world);
+                blockSystemHandler.update();
+
                 ClientEventHandler.updateMouseOver(blockSystemHandler, MINECRAFT.player, MINECRAFT.objectMouseOver);
 
-                blockSystemHandler.update();
                 BlockSystemRenderHandler.update();
 
                 BlockSystemInteractionHandler interactionHandler = blockSystemHandler.getInteractionHandler(MINECRAFT.player);
@@ -70,10 +71,7 @@ public class ClientEventHandler {
         // TODO: Wrap with fake player
         float yaw = player.rotationYaw;
         float pitch = player.rotationPitch;
-        double x = player.posX;
-        double y = player.posY + player.getEyeHeight();
-        double z = player.posZ;
-        Vec3d start = new Vec3d(x, y, z);
+        Vec3d start = player.getPositionEyes(1.0F);
         float pitchHorizontalFactor = -MathHelper.cos((float) -Math.toRadians(pitch));
         float deltaY = MathHelper.sin((float) -Math.toRadians(pitch));
         float deltaX = MathHelper.sin((float) -Math.toRadians(yaw - 180.0F)) * pitchHorizontalFactor;

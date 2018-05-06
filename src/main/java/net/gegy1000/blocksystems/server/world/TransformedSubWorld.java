@@ -109,6 +109,7 @@ public abstract class TransformedSubWorld extends World {
 
     @Override
     public RayTraceResult rayTraceBlocks(Vec3d start, Vec3d end, boolean traceLiquid, boolean ignoreBlockWithoutBoundingBox, boolean returnLastUncollidableBlock) {
+        // TODO: Is the angle being raytraced at wrong? Probably, test it!
         return super.rayTraceBlocks(this.transform.toLocalPos(start), this.transform.toLocalPos(end), traceLiquid, ignoreBlockWithoutBoundingBox, returnLastUncollidableBlock);
     }
 

@@ -2,7 +2,6 @@ package net.gegy1000.blocksystems.server.blocksystem;
 
 import net.gegy1000.blocksystems.BlockSystems;
 import net.gegy1000.blocksystems.server.entity.BlockSystemControlEntity;
-import net.gegy1000.blocksystems.server.util.WorldTransform;
 import net.gegy1000.blocksystems.server.util.collision.EncompassedAABB;
 import net.gegy1000.blocksystems.server.world.TransformedSubWorld;
 import net.minecraft.block.state.IBlockState;
@@ -259,10 +258,6 @@ public abstract class BlockSystem extends TransformedSubWorld {
 
     public EncompassedAABB getRotatedBounds() {
         return this.rotatedBounds;
-    }
-
-    public WorldTransform getTransform() {
-        return this.transform;
     }
 
     @Override

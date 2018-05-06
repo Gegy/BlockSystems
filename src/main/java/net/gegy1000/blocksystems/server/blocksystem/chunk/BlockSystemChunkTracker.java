@@ -156,8 +156,9 @@ public class BlockSystemChunkTracker {
     }
 
     private void updatePlayer(PlayerHandler handler, EntityPlayerMP player) {
-        int playerChunkX = MathHelper.floor(player.posX) >> 4;
-        int playerChunkZ = MathHelper.floor(player.posZ) >> 4;
+        Point3d playerPosition = this.getLocalPos(player);
+        int playerChunkX = MathHelper.floor(playerPosition.getX()) >> 4;
+        int playerChunkZ = MathHelper.floor(playerPosition.getZ()) >> 4;
 
         double movedX = handler.managedX - player.posX;
         double movedZ = handler.managedZ - player.posZ;
@@ -173,11 +174,11 @@ public class BlockSystemChunkTracker {
             if (movedChunkX != 0 || movedChunkZ != 0) {
                 for (int chunkZ = playerChunkZ - range; chunkZ <= playerChunkZ + range; ++chunkZ) {
                     for (int chunkX = playerChunkX - range; chunkX <= playerChunkX + range; ++chunkX) {
-                        if (!this.inRange(chunkX, chunkZ, managedChunkX, managedChunkZ, range)) {
+                        if (!this.intersects(chunkX, chunkZ, managedChunkX, managedChunkZ, range)) {
                             this.getOrCreateTracker(chunkX, chunkZ).addPlayer(player);
                         }
 
-                        if (!this.inRange(chunkX - movedChunkX, chunkZ - movedChunkZ, playerChunkX, playerChunkZ, range)) {
+                        if (!this.intersects(chunkX - movedChunkX, chunkZ - movedChunkZ, playerChunkX, playerChunkZ, range)) {
                             BlockSystemPlayerTracker tracker = this.getTracker(chunkX - movedChunkX, chunkZ - movedChunkZ);
                             if (tracker != null) {
                                 tracker.removePlayer(player);
@@ -200,16 +201,6 @@ public class BlockSystemChunkTracker {
     @Nullable
     public BlockSystemPlayerTracker getTracker(int x, int z) {
         return this.playerTrackers.get(getChunkIndex(x, z));
-    }
-
-    private boolean inRange(int originX, int originZ, int targetX, int targetZ, int range) {
-        int deltaX = originX - targetX;
-        int deltaZ = originZ - targetZ;
-        if (deltaX >= -range && deltaX <= range) {
-            return deltaZ >= -range && deltaZ <= range;
-        } else {
-            return false;
-        }
     }
 
     private BlockSystemPlayerTracker getOrCreateTracker(int chunkX, int chunkZ) {
@@ -243,8 +234,8 @@ public class BlockSystemChunkTracker {
         PlayerHandler handler = new PlayerHandler(player, playerPosition.getX(), playerPosition.getZ());
         this.players.put(player.getEntityId(), handler);
 
-        int playerChunkX = (int) playerPosition.getX() >> 4;
-        int playerChunkZ = (int) playerPosition.getZ() >> 4;
+        int playerChunkX = MathHelper.floor(playerPosition.getX()) >> 4;
+        int playerChunkZ = MathHelper.floor(playerPosition.getZ()) >> 4;
         for (int chunkX = playerChunkX - this.playerViewRadius; chunkX <= playerChunkX + this.playerViewRadius; ++chunkX) {
             for (int chunkZ = playerChunkZ - this.playerViewRadius; chunkZ <= playerChunkZ + this.playerViewRadius; ++chunkZ) {
                 this.getOrCreateTracker(chunkX, chunkZ).addPlayer(player);
