@@ -66,7 +66,7 @@ public class ClientBlockSystemInteractionHandler implements BlockSystemInteracti
         this.breakProgress += state.getPlayerRelativeBlockHardness(this.player, blockSystem, pos);
         if (this.breakSoundTimer++ % 4 == 0) {
             SoundType soundType = block.getSoundType();
-            BlockPos point = blockSystem.getTransformedPosition(pos);
+            BlockPos point = blockSystem.getTransform().toGlobalPos(pos);
             BlockSystems.PROXY.playSound(new PositionedSoundRecord(soundType.getHitSound(), SoundCategory.NEUTRAL, (soundType.getVolume() + 1.0F) / 8.0F, soundType.getPitch() * 0.5F, point));
         }
 

@@ -68,8 +68,8 @@ public class ServerEventHandler {
                 if (collides) {
                     QuatRotation rotation = blockSystem.rotation.difference(blockSystem.prevRotation);
 
-                    Point3d local = blockSystem.getPrevUntransformedPosition(new Point3d(entity.posX, entity.posY, entity.posZ));
-                    Point3d transformedGlobal = blockSystem.getTransformedPosition(local);
+                    Point3d local = blockSystem.getTransform().toLocalPrevPos(new Point3d(entity.posX, entity.posY, entity.posZ));
+                    Point3d transformedGlobal = blockSystem.getTransform().toGlobalPos(local);
 
                     float transformedYaw = entity.rotationYaw + (float) rotation.toYaw();
                     float transformedPitch = entity.rotationPitch + (float) rotation.toPitch();

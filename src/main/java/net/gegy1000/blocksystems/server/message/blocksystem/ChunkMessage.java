@@ -46,7 +46,7 @@ public class ChunkMessage extends BaseMessage<ChunkMessage> {
         this.x = chunk.x;
         this.z = chunk.z;
         this.loadChunk = mask == 0xFFFF;
-        boolean hasSkylight = !blockSystem.getMainWorld().provider.isNether();
+        boolean hasSkylight = !blockSystem.getParentWorld().provider.isNether();
         this.buffer = new byte[this.calculateChunkSize(chunk, hasSkylight, mask)];
         this.availableSections = this.extractChunkData(new PacketBuffer(this.getWriteBuffer()), chunk, hasSkylight, mask);
         this.tileUpdates = Lists.newArrayList();

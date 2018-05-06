@@ -71,7 +71,7 @@ public class BlockSystemPlayerTracker {
             this.players.add(player);
             if (this.sentToPlayers) {
                 this.sendNearbySpecialEntities(player);
-                MinecraftForge.EVENT_BUS.post(new Watch(this.chunkPosition, player));
+                MinecraftForge.EVENT_BUS.post(new Watch(this.providingChunk, player));
             }
         }
     }

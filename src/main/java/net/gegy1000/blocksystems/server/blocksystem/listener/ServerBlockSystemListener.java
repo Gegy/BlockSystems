@@ -71,10 +71,10 @@ public class ServerBlockSystemListener implements IWorldEventListener {
 
     @Override
     public void playEvent(EntityPlayer player, int type, BlockPos pos, int data) {
-        Vec3d transformed = this.blockSystem.getTransformedPosition(new Vec3d(pos.getX(), pos.getY(), pos.getZ()));
-        int dimension = this.blockSystem.getMainWorld().provider.getDimension();
+        Vec3d transformed = this.blockSystem.getTransform().toGlobalPos(new Vec3d(pos.getX(), pos.getY(), pos.getZ()));
+        int dimension = this.blockSystem.getParentWorld().provider.getDimension();
         PlayEventMessage message = new PlayEventMessage(this.blockSystem, pos, type, data, false);
-        NetworkHelper.sendToAllNearExcept(this.blockSystem.getMainWorld(), player, transformed.x, transformed.y, transformed.z,64.0, dimension, message);
+        NetworkHelper.sendToAllNearExcept(this.blockSystem.getParentWorld(), player, transformed.x, transformed.y, transformed.z,64.0, dimension, message);
     }
 
     @Override

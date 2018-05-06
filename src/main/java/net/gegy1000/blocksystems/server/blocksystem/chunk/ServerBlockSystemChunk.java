@@ -21,7 +21,7 @@ import javax.annotation.ParametersAreNonnullByDefault;
 
 @ParametersAreNonnullByDefault
 public class ServerBlockSystemChunk extends PartitionedChunk {
-    protected final World mainWorld;
+    protected final World parentWorld;
     protected final BlockSystemServer blockSystem;
 
     protected ChunkPos partitionPos;
@@ -30,14 +30,14 @@ public class ServerBlockSystemChunk extends PartitionedChunk {
 
     public ServerBlockSystemChunk(BlockSystemServer blockSystem, int x, int z, @Nullable ChunkPos partitionPos) {
         super(blockSystem, x, z);
-        this.mainWorld = blockSystem.getMainWorld();
+        this.parentWorld = blockSystem.getParentWorld();
         this.blockSystem = blockSystem;
         this.partitionPos = partitionPos;
     }
 
     public ServerBlockSystemChunk(BlockSystemServer blockSystem, int x, int z) {
         super(blockSystem, x, z);
-        this.mainWorld = blockSystem.getMainWorld();
+        this.parentWorld = blockSystem.getParentWorld();
         this.blockSystem = blockSystem;
     }
 
@@ -56,7 +56,7 @@ public class ServerBlockSystemChunk extends PartitionedChunk {
             this.partitionPos = this.blockSystem.getChunkHandler().allocateChunk(this);
         }
         if (this.partitionPos != null) {
-            BlockSystemWorldAccess.setBlockState(this.mainWorld, this.fromLocal(pos), state);
+            BlockSystemWorldAccess.setBlockState(this.parentWorld, this.fromLocal(pos), state);
         }
         return super.setBlockState(pos, state);
     }
@@ -97,8 +97,8 @@ public class ServerBlockSystemChunk extends PartitionedChunk {
     @Override
     public void addTileEntity(BlockPos pos, TileEntity tile) {
         BlockPos partitionPos = this.fromLocal(pos);
-        if (tile.getWorld() != this.mainWorld) {
-            tile.setWorld(this.mainWorld);
+        if (tile.getWorld() != this.parentWorld) {
+            tile.setWorld(this.parentWorld);
         }
         tile.setPos(partitionPos);
 
@@ -111,7 +111,7 @@ public class ServerBlockSystemChunk extends PartitionedChunk {
             this.tileEntities.put(pos, tile);
         }
 
-        this.mainWorld.setTileEntity(partitionPos, tile);
+        this.parentWorld.setTileEntity(partitionPos, tile);
     }
 
     @Override
@@ -126,7 +126,7 @@ public class ServerBlockSystemChunk extends PartitionedChunk {
         if (this.partitionPos == null) {
             return null;
         }
-        return BlockSystemWorldAccess.getChunk(this.mainWorld, this.partitionPos.x, this.partitionPos.z);
+        return BlockSystemWorldAccess.getChunk(this.parentWorld, this.partitionPos.x, this.partitionPos.z);
     }
 
     @Override

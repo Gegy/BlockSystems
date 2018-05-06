@@ -23,7 +23,7 @@ public class ClientBlockSystemChunk extends Chunk {
     public ClientBlockSystemChunk(BlockSystem blockSystem, int x, int z) {
         super(blockSystem, x, z);
         this.blockSystem = blockSystem;
-        this.mainWorld = blockSystem.getMainWorld();
+        this.mainWorld = blockSystem.getParentWorld();
     }
 
     @Override

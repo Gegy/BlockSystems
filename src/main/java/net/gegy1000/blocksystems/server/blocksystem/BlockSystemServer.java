@@ -63,7 +63,7 @@ public class BlockSystemServer extends BlockSystem {
 
     @Override
     protected IChunkProvider createChunkProvider() {
-        IChunkLoader chunkLoader = this.mainWorld.getSaveHandler().getChunkLoader(this.provider);
+        IChunkLoader chunkLoader = this.parentWorld.getSaveHandler().getChunkLoader(this.provider);
         return new ServerChunkCacheBlockSystem(this, chunkLoader);
     }
 
@@ -248,22 +248,17 @@ public class BlockSystemServer extends BlockSystem {
         return this.currentScheduledTicks.contains(scheduledTick);
     }
 
+    @Override
     public void deserialize(NBTTagCompound compound) {
         this.deserializing = true;
-        this.posX = compound.getDouble("pos_x");
-        this.posY = compound.getDouble("pos_y");
-        this.posZ = compound.getDouble("pos_z");
-        this.rotation.deserialize(compound.getCompoundTag("rot"));
+        super.deserialize(compound);
         this.chunkHandler.deserialize(compound.getCompoundTag("block_data"));
         this.deserializing = false;
-        this.recalculateMatrices();
     }
 
+    @Override
     public NBTTagCompound serialize(NBTTagCompound compound) {
-        compound.setDouble("pos_x", this.posX);
-        compound.setDouble("pos_y", this.posY);
-        compound.setDouble("pos_z", this.posZ);
-        compound.setTag("rot", this.rotation.serialize(new NBTTagCompound()));
+        super.serialize(compound);
         compound.setTag("block_data", this.chunkHandler.serialize(new NBTTagCompound()));
         return compound;
     }

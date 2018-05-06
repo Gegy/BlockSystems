@@ -116,12 +116,12 @@ public class BlockSystemRenderer extends RenderGlobal implements IWorldEventList
         this.viewDistance = -1;
         this.chunkContainer = new VBORenderChunkContainer();
         this.dispatcher = MC.renderGlobal.renderDispatcher;
-        this.updateFrustrum(this.getUntransformedPosition(MC.player), MC.gameSettings.renderDistanceChunks, OpenGlHelper.useVbo());
+        this.updateFrustrum(this.toLocalPos(MC.player), MC.gameSettings.renderDistanceChunks, OpenGlHelper.useVbo());
         blockSystem.addEventListener(this);
     }
 
     public void renderBlockSystem(Entity viewEntity, double x, double y, double z, QuatRotation rotation, float partialTicks, long finishTimeNano) {
-        Point3d untransformed = this.getUntransformedPosition(viewEntity);
+        Point3d untransformed = this.toLocalPos(viewEntity);
 
         this.setup(viewEntity, partialTicks, untransformed);
         this.updateChunks(finishTimeNano);
@@ -295,7 +295,7 @@ public class BlockSystemRenderer extends RenderGlobal implements IWorldEventList
             this.viewFrustum.updateChunkPositions(untransformed.x, untransformed.z);
         }
 
-        Point3d untransformedLastTick = this.getUntransformedPosition(viewEntity.lastTickPosX, viewEntity.lastTickPosY, viewEntity.lastTickPosZ);
+        Point3d untransformedLastTick = this.toLocalPos(viewEntity.lastTickPosX, viewEntity.lastTickPosY, viewEntity.lastTickPosZ);
 
         double viewRenderX = untransformedLastTick.x + (untransformed.x - untransformedLastTick.x) * partialTicks;
         double viewRenderY = untransformedLastTick.y + (untransformed.y - untransformedLastTick.y) * partialTicks;
@@ -509,16 +509,16 @@ public class BlockSystemRenderer extends RenderGlobal implements IWorldEventList
         float x = MathHelper.sin(-yaw * 0.017453292F - (float) Math.PI);
         float xzScale = -MathHelper.cos(-pitch * 0.017453292F);
         float y = MathHelper.sin(-pitch * 0.017453292F);
-        Vec3d vec = this.blockSystem.getTransformedVector(new Vec3d(x * xzScale, y, z * xzScale));
+        Vec3d vec = this.blockSystem.getTransform().toGlobalVector(new Vec3d(x * xzScale, y, z * xzScale));
         return new Vector3f((float) vec.x, (float) vec.y, (float) vec.z);
     }
 
-    private Point3d getUntransformedPosition(Entity entity) {
-        return this.getUntransformedPosition(entity.posX, entity.posY, entity.posZ);
+    private Point3d toLocalPos(Entity entity) {
+        return this.toLocalPos(entity.posX, entity.posY, entity.posZ);
     }
 
-    private Point3d getUntransformedPosition(double x, double y, double z) {
-        return this.blockSystem.getUntransformedPosition(new Point3d(x, y, z));
+    private Point3d toLocalPos(double x, double y, double z) {
+        return this.blockSystem.getTransform().toLocalPos(new Point3d(x, y, z));
     }
 
     @Override

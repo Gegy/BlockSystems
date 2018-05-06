@@ -31,9 +31,9 @@ public interface BlockSystemInteractionHandler {
         EntityPlayer player = this.getPlayer();
 
         Point3d interactPoint = new Point3d(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-        Point3d transformPos = blockSystem.getTransformedPosition(interactPoint);
+        Point3d globalPos = blockSystem.getTransform().toGlobalPos(interactPoint);
         double reachDistance = player.getEntityAttribute(EntityPlayer.REACH_DISTANCE).getAttributeValue() + 2.0;
 
-        return player.getDistanceSq(transformPos.x, transformPos.y, transformPos.z) < reachDistance * reachDistance;
+        return player.getDistanceSq(globalPos.x, globalPos.y, globalPos.z) < reachDistance * reachDistance;
     }
 }

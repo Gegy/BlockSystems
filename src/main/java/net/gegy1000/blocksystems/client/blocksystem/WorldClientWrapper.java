@@ -12,10 +12,10 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystem;
 
 public class WorldClientWrapper extends WorldClient {
-    private BlockSystem blockSystem;
+    private final BlockSystem blockSystem;
 
     public WorldClientWrapper(BlockSystem blockSystem) {
-        super(null, new WorldSettings(blockSystem.getMainWorld().getWorldInfo()), blockSystem.provider.getDimension(), blockSystem.getMainWorld().getDifficulty(), blockSystem.profiler);
+        super(null, new WorldSettings(blockSystem.getParentWorld().getWorldInfo()), blockSystem.provider.getDimension(), blockSystem.getParentWorld().getDifficulty(), blockSystem.profiler);
         this.blockSystem = blockSystem;
     }
 

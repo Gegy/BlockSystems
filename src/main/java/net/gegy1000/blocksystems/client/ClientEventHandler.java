@@ -100,7 +100,7 @@ public class ClientEventHandler {
             for (Map.Entry<BlockSystem, RayTraceResult> entry : results.entrySet()) {
                 BlockSystem blockSystem = entry.getKey();
                 RayTraceResult result = entry.getValue();
-                double distance = result.hitVec.distanceTo(blockSystem.getUntransformedPosition(start));
+                double distance = result.hitVec.distanceTo(blockSystem.getTransform().toLocalPos(start));
                 if (distance < closestDistance) {
                     closest = entry;
                     closestDistance = distance;

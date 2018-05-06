@@ -34,7 +34,7 @@ public class ServerChunkCacheBlockSystem extends ChunkProviderServer {
     public final BlockSystemServer blockSystem;
 
     public ServerChunkCacheBlockSystem(BlockSystemServer blockSystem, IChunkLoader chunkLoader) {
-        super((WorldServer) blockSystem.getMainWorld(), chunkLoader, new BlankChunkGenerator(blockSystem));
+        super((WorldServer) blockSystem.getParentWorld(), chunkLoader, new BlankChunkGenerator(blockSystem));
         this.blockSystem = blockSystem;
     }
 

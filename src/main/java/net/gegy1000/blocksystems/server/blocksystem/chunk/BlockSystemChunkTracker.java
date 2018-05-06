@@ -79,7 +79,7 @@ public class BlockSystemChunkTracker {
     }
 
     public void tick() {
-        long worldTime = this.blockSystem.getMainWorld().getTotalWorldTime();
+        long worldTime = this.blockSystem.getParentWorld().getTotalWorldTime();
 
         if (worldTime - this.previousTotalWorldTime > 8000) {
             this.previousTotalWorldTime = worldTime;
@@ -239,7 +239,7 @@ public class BlockSystemChunkTracker {
     }
 
     public void addPlayer(EntityPlayerMP player) {
-        Point3d playerPosition = this.getUntransformedPosition(player);
+        Point3d playerPosition = this.getLocalPos(player);
         PlayerHandler handler = new PlayerHandler(player, playerPosition.getX(), playerPosition.getZ());
         this.players.put(player.getEntityId(), handler);
 
@@ -283,7 +283,7 @@ public class BlockSystemChunkTracker {
             int deltaRadius = radius - this.playerViewRadius;
             for (PlayerHandler handler : this.players.values()) {
                 EntityPlayerMP player = handler.player;
-                Point3d playerPosition = this.getUntransformedPosition(player);
+                Point3d playerPosition = this.getLocalPos(player);
                 int playerChunkX = MathHelper.floor(playerPosition.getX()) >> 4;
                 int playerChunkZ = MathHelper.floor(playerPosition.getZ()) >> 4;
                 if (deltaRadius > 0) {
@@ -338,8 +338,8 @@ public class BlockSystemChunkTracker {
         }
     }
 
-    public Point3d getUntransformedPosition(EntityPlayer player) {
-        return this.blockSystem.getUntransformedPosition(new Point3d(player.posX, player.posY, player.posZ));
+    public Point3d getLocalPos(EntityPlayer player) {
+        return this.blockSystem.getTransform().toLocalPos(new Point3d(player.posX, player.posY, player.posZ));
     }
 
     private static class PlayerHandler {

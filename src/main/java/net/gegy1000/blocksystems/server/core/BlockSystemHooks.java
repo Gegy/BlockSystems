@@ -7,6 +7,7 @@ import net.gegy1000.blocksystems.server.blocksystem.BlockSystemHandler;
 import net.gegy1000.blocksystems.server.blocksystem.interaction.BlockSystemInteractionHandler;
 import net.gegy1000.blocksystems.server.world.BlockSystemWorldAccess;
 import net.gegy1000.blocksystems.server.world.HookedChunk;
+import net.gegy1000.blocksystems.server.world.TransformedSubWorld;
 import net.gegy1000.blocksystems.server.world.data.BlockSystemSavedData;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
@@ -44,14 +45,14 @@ public class BlockSystemHooks {
     }
 
     public static void transformEffect(Particle particle) {
-        BlockSystem transforming = BlockSystem.transforming;
+        TransformedSubWorld transforming = TransformedSubWorld.TRANSFORMING.get();
         if (transforming != null) {
-            Point3d transformed = transforming.getTransformedPosition(new Point3d(particle.posX, particle.posY, particle.posZ));
+            Point3d transformed = transforming.getTransform().toGlobalPos(new Point3d(particle.posX, particle.posY, particle.posZ));
             particle.setPosition(transformed.getX(), transformed.getY(), transformed.getZ());
             particle.prevPosX = transformed.getX();
             particle.prevPosY = transformed.getY();
             particle.prevPosZ = transformed.getZ();
-            Vec3d transformedVelocity = transforming.getTransformedVector(new Vec3d(particle.motionX, particle.motionY, particle.motionZ));
+            Vec3d transformedVelocity = transforming.getTransform().toGlobalVector(new Vec3d(particle.motionX, particle.motionY, particle.motionZ));
             particle.motionX = transformedVelocity.x;
             particle.motionY = transformedVelocity.y;
             particle.motionZ = transformedVelocity.z;
@@ -60,7 +61,7 @@ public class BlockSystemHooks {
 
     public static World getMainWorld(World world) {
         if (world instanceof BlockSystem) {
-            return ((BlockSystem) world).getMainWorld();
+            return ((BlockSystem) world).getParentWorld();
         }
         return world;
     }
@@ -106,7 +107,7 @@ public class BlockSystemHooks {
             RayTraceResult mousedOver = ClientProxy.getMouseOver();
             if (blockSystem != null && mousedOver != null) {
                 double length = mc.objectMouseOver.hitVec.subtract(eyePos).lengthSquared();
-                Vec3d blockSystemEyePos = blockSystem.getUntransformedPosition(eyePos);
+                Vec3d blockSystemEyePos = blockSystem.getTransform().toLocalPos(eyePos);
                 if (mousedOver.hitVec.subtract(blockSystemEyePos).lengthSquared() < length) {
                     mc.objectMouseOver = new RayTraceResult(RayTraceResult.Type.MISS, blockSystemEyePos, EnumFacing.DOWN, mousedOver.getBlockPos());
                 }
@@ -161,7 +162,7 @@ public class BlockSystemHooks {
         World world = generator.getRenderChunk().getWorld();
         if (world instanceof BlockSystem) {
             BlockSystem blockSystem = (BlockSystem) world;
-            return blockSystem.getUntransformedPosition(pos);
+            return blockSystem.getTransform().toLocalPos(pos);
         }
         return pos;
     }

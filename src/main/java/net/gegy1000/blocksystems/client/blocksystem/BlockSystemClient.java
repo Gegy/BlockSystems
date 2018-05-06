@@ -49,14 +49,14 @@ public class BlockSystemClient extends BlockSystem {
         this.chunkProviderClient.tick();
         EntityPlayerSP player = this.mc.player;
         if (player != null) {
-            Point3d untransformedPosition = this.getUntransformedPosition(new Point3d(player.posX, player.posY, player.posZ));
-            this.runDisplayTicks((int) untransformedPosition.x, (int) untransformedPosition.y, (int) untransformedPosition.z);
+            Point3d localPos = this.transform.toLocalPos(new Point3d(player.posX, player.posY, player.posZ));
+            this.runDisplayTicks((int) localPos.x, (int) localPos.y, (int) localPos.z);
         }
     }
 
     @Override
     public void playSound(double x, double y, double z, SoundEvent sound, SoundCategory category, float volume, float pitch, boolean distanceDelay) {
-        Point3d transformed = this.getTransformedPosition(new Point3d(x, y, z));
+        Point3d transformed = this.transform.toGlobalPos(new Point3d(x, y, z));
         x = transformed.getX();
         y = transformed.getY();
         z = transformed.getZ();
