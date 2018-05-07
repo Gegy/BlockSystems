@@ -75,6 +75,7 @@ public class BlockSystemSavedData extends WorldSavedData {
                     CURRENTLY_LOADING.set(system);
                     system.deserialize(tag);
                     BlockSystems.PROXY.getBlockSystemHandler(this.world).loadBlockSystem(system);
+                    this.addBlockSystem(system);
                     CURRENTLY_LOADING.set(null);
                     if (system.getId() > highestId) {
                         highestId = system.getId();

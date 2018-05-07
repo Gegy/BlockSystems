@@ -49,7 +49,7 @@ public abstract class TransformedSubWorld extends World {
         this.prevPosX = this.posX;
         this.prevPosY = this.posY;
         this.prevPosZ = this.posZ;
-        this.prevRotation = this.rotation.copy();
+        this.prevRotation.copyFrom(this.rotation);
 
         super.tick();
 

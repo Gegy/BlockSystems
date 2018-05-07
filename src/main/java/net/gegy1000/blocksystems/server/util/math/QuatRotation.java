@@ -121,4 +121,9 @@ public class QuatRotation {
         quatRotation.matrix.set(this.matrix);
         return quatRotation;
     }
+
+    public void copyFrom(QuatRotation quatRotation) {
+        this.rotation.set(quatRotation.rotation);
+        this.matrix.set(quatRotation.matrix);
+    }
 }

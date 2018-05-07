@@ -71,9 +71,11 @@ public class ServerEventHandler {
                     Point3d local = blockSystem.getTransform().toLocalPrevPos(new Point3d(entity.posX, entity.posY, entity.posZ));
                     Point3d transformedGlobal = blockSystem.getTransform().toGlobalPos(local);
 
-                    float transformedYaw = entity.rotationYaw + (float) rotation.toYaw();
-                    float transformedPitch = entity.rotationPitch + (float) rotation.toPitch();
-                    entity.setPositionAndRotation(transformedGlobal.x, transformedGlobal.y, transformedGlobal.z, transformedYaw, transformedPitch);
+                    float deltaYaw = (float) rotation.toYaw();
+                    entity.rotationYaw += deltaYaw;
+                    entity.renderYawOffset += deltaYaw;
+                    entity.rotationPitch += (float) rotation.toPitch();
+                    entity.setPosition(transformedGlobal.x, transformedGlobal.y, transformedGlobal.z);
                 }
             }
         }

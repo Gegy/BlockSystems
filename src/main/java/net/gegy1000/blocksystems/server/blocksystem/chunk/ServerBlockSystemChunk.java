@@ -1,6 +1,5 @@
 package net.gegy1000.blocksystems.server.blocksystem.chunk;
 
-import net.gegy1000.blocksystems.BlockSystems;
 import net.gegy1000.blocksystems.server.blocksystem.BlockSystemServer;
 import net.gegy1000.blocksystems.server.world.BlockSystemWorldAccess;
 import net.minecraft.block.state.IBlockState;
@@ -85,12 +84,11 @@ public class ServerBlockSystemChunk extends PartitionedChunk {
             NBTTagCompound sectionTag = sectionList.getCompoundTagAt(i);
             int index = sectionTag.getShort("index");
             ExtendedBlockStorage section = this.getBlockStorageArray()[index];
-            if (section != NULL_BLOCK_STORAGE && !section.isEmpty()) {
-                section.setBlockLight(new NibbleArray(sectionTag.getByteArray("block_light")));
-                section.setSkyLight(new NibbleArray(sectionTag.getByteArray("sky_light")));
-            } else {
-                BlockSystems.LOGGER.warn("Tried to populate light data for non-existent chunk section at {} {} {}", this.x, this.z, index);
+            if (section == NULL_BLOCK_STORAGE) {
+                section = new ExtendedBlockStorage(index << 4, true);
             }
+            section.setBlockLight(new NibbleArray(sectionTag.getByteArray("block_light")));
+            section.setSkyLight(new NibbleArray(sectionTag.getByteArray("sky_light")));
         }
     }
 

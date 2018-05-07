@@ -83,28 +83,24 @@ public class PartitionedChunkHandler {
         ChunkPos partitionPos = chunk.getPartitionPos();
         Chunk partition = chunk.getPartitionChunk();
         if (partitionPos != null && partition != null) {
-            BlockPos.MutableBlockPos worldPos = new BlockPos.MutableBlockPos();
-            int offsetX = partitionPos.getXStart();
-            int offsetZ = partitionPos.getZStart();
-
             ExtendedBlockStorage[] sections = chunk.getBlockStorageArray();
+            ExtendedBlockStorage[] partitionSections = partition.getBlockStorageArray();
             for (int sectionY = 0; sectionY < sections.length; sectionY++) {
-                int baseY = sectionY << 4;
-                int count = 0;
-                ExtendedBlockStorage section = sections[sectionY];
-                if (section == Chunk.NULL_BLOCK_STORAGE) {
-                    section = new ExtendedBlockStorage(baseY, true);
-                }
-                for (BlockPos.MutableBlockPos pos : BlockPos.getAllInBoxMutable(0, baseY, 0, 15, baseY + 15, 15)) {
-                    worldPos.setPos(pos.getX() + offsetX, pos.getY(), pos.getZ() + offsetZ);
-                    IBlockState state = partition.getBlockState(pos);
-                    section.set(pos.getX(), pos.getY() & 15, pos.getZ(), state);
-                    if (state.getBlock() != Blocks.AIR) {
-                        count++;
+                ExtendedBlockStorage partitionSection = partitionSections[sectionY];
+                if (partitionSection != null) {
+                    ExtendedBlockStorage section = sections[sectionY];
+                    if (section == Chunk.NULL_BLOCK_STORAGE) {
+                        section = new ExtendedBlockStorage(sectionY << 4, true);
                     }
+                    for (BlockPos.MutableBlockPos pos : BlockPos.getAllInBoxMutable(0, 0, 0, 15, 15, 15)) {
+                        IBlockState state = partitionSection.get(pos.getX(), pos.getY(), pos.getZ());
+                        section.set(pos.getX(), pos.getY(), pos.getZ(), state);
+                        if (state.getBlock() != Blocks.AIR) {
+                            blockCount++;
+                        }
+                    }
+                    sections[sectionY] = section;
                 }
-                sections[sectionY] = count > 0 ? section : Chunk.NULL_BLOCK_STORAGE;
-                blockCount += count;
             }
 
             for (Map.Entry<BlockPos, TileEntity> entry : partition.tileEntities.entrySet()) {
@@ -154,12 +150,13 @@ public class PartitionedChunkHandler {
     public NBTTagCompound serialize(NBTTagCompound compound) {
         NBTTagList chunksList = new NBTTagList();
         for (PartitionedChunk chunk : this.chunks.values()) {
-            if (!chunk.isEmpty()) {
+            ChunkPos partitionPos = chunk.getPartitionPos();
+            if (!chunk.isEmpty() && partitionPos != null) {
                 NBTTagCompound chunkTag = new NBTTagCompound();
                 chunkTag.setInteger("x", chunk.x);
                 chunkTag.setInteger("z", chunk.z);
-                chunkTag.setInteger("partition_x", chunk.getPartitionPos().x);
-                chunkTag.setInteger("partition_z", chunk.getPartitionPos().z);
+                chunkTag.setInteger("partition_x", partitionPos.x);
+                chunkTag.setInteger("partition_z", partitionPos.z);
                 chunk.serialize(chunkTag);
                 chunksList.appendTag(chunkTag);
             }
@@ -173,12 +170,7 @@ public class PartitionedChunkHandler {
         for (int i = 0; i < chunksList.tagCount(); i++) {
             NBTTagCompound chunkTag = chunksList.getCompoundTagAt(i);
             ChunkPos pos = new ChunkPos(chunkTag.getInteger("x"), chunkTag.getInteger("z"));
-            ChunkPos partitionPos;
-            if (chunkTag.hasKey("partition_x") && chunkTag.hasKey("partition_z")) {
-                partitionPos = new ChunkPos(chunkTag.getInteger("partition_x"), chunkTag.getInteger("partition_z"));
-            } else {
-                partitionPos = null;
-            }
+            ChunkPos partitionPos = new ChunkPos(chunkTag.getInteger("partition_x"), chunkTag.getInteger("partition_z"));
 
             ServerBlockSystemChunk chunk = new ServerBlockSystemChunk(this.blockSystem, pos.x, pos.z, partitionPos);
             chunk.blockCount = this.populateFromPartition(chunk);
@@ -186,10 +178,7 @@ public class PartitionedChunkHandler {
 
             BlockSystemSavedData.enqueuePartition(this.mainWorld, this.blockSystem, partitionPos);
             this.chunks.put(ChunkPos.asLong(chunk.x, chunk.z), chunk);
-
-            if (partitionPos != null) {
-                this.partitionChunks.put(ChunkPos.asLong(partitionPos.x, partitionPos.z), chunk);
-            }
+            this.partitionChunks.put(ChunkPos.asLong(partitionPos.x, partitionPos.z), chunk);
         }
     }
 
