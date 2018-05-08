@@ -11,6 +11,7 @@ buildscript {
   }
 }
 apply plugin: "net.minecraftforge.gradle.forge"
+apply plugin: "maven-publish"
 
 def mod_file = getModFile()
 version = getModField("VERSION", mod_file)
@@ -19,11 +20,12 @@ archivesBaseName = "BlockSystems"
 sourceCompatibility = targetCompatibility = "1.8"
 
 def core_plugin = "net.gegy1000.blocksystems.server.core.BlockSystemPlugin"
+def minecraft_mappings = "snapshot_20180503"
 
 minecraft {
   version = "1.12.2-14.23.3.2655"
   runDir = "minecraft"
-  mappings = "snapshot_20180503"
+  mappings = minecraft_mappings
 
   clientJvmArgs = ["-Dfml.coreMods.load=$core_plugin"]
   serverJvmArgs = ["-Dfml.coreMods.load=$core_plugin"]
@@ -48,6 +50,29 @@ processResources {
   }
 }
 
+task generateMappings {
+  def mappingParts = minecraft_mappings.split("_")
+  def inputFile = new File("${System.properties["user.home"]}/.gradle/caches/minecraft/de/oceanlabs/mcp/mcp_${mappingParts[0]}/${mappingParts[1]}/${project.minecraft.version}/srgs/mcp-srg.srg")
+
+  def outputFile = new File("src/main/resources/blocksystems.mappings")
+  outputFile.withWriter("UTF-8") { writer ->
+    if (inputFile.exists()) {
+      inputFile.eachLine { line ->
+        def parts = line.split(" ")
+        if (line.startsWith("FD")) {
+          writer.write("${parts[1]}=${getLastSeparated(parts[2])}")
+        } else if (line.startsWith("MD")) {
+          writer.write("${parts[1]}${parts[2]}=${getLastSeparated(parts[3])}")
+        }
+        writer.write('\n')
+      }
+    }
+  }
+}
+
+compileJava.dependsOn generateMappings
+decompileMc.dependsOn generateMappings
+
 jar {
   manifest {
     attributes "FMLAT": "blocksystems_at.cfg"
@@ -63,6 +88,53 @@ task devJar(type: Jar) {
     attributes "FMLAT": "blocksystems_at.cfg"
     attributes "FMLCorePlugin": "net.gegy1000.blocksystems.server.core.BlockSystemPlugin"
     attributes "FMLCorePluginContainsFMLMod": "true"
+  }
+}
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+  classifier = "sources"
+  from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+  classifier = "javadoc"
+  from javadoc.getDestinationDir()
+}
+
+artifacts {
+  archives sourcesJar
+  archives devJar
+  archives javadocJar
+}
+
+publishing {
+  publications {
+    mavenJava(MavenPublication) {
+      groupId "net.gegy1000"
+      artifactId "blocksystems"
+      version project.version
+
+      from components.java
+
+      artifact devJar {
+        classifier "dev"
+      }
+      artifact sourcesJar {
+        classifier "sources"
+      }
+      artifact javadocJar {
+        classifier "javadoc"
+      }
+    }
+  }
+  repositories {
+    maven {
+      credentials {
+        username project.mavenUsername ?: ""
+        password project.mavenPassword ?: ""
+      }
+      url project.mavenUrl ?: ""
+    }
   }
 }
 
@@ -98,4 +170,8 @@ String getModField(String type, String mod_file) {
     }
   }
   return field
+}
+
+static String getLastSeparated(String input) {
+  return input.substring(input.lastIndexOf('/') + 1, input.length())
 }
