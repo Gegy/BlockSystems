@@ -7,3 +7,4 @@ build
 .gradle
 minecraft
 classes/
+*.mappings
